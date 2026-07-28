@@ -1,0 +1,8 @@
+▲ Next.js 16.2.12 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.1.44:3000
+✓ Ready in 472ms
+
+[?25h
+
+C:\wse\OnboardAI>
