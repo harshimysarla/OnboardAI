@@ -1,5 +1,5 @@
-import { createServerClient } from "@/lib/supabase-server";
-import { isSupabaseConfigured, supabaseAdmin } from "@/lib/supabase";
+import { createServerClient, supabaseAdmin } from "@/lib/supabase-server";
+import { isSupabaseConfigured } from "@/lib/supabase";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
@@ -10,30 +10,24 @@ interface Chunk {
 
 export async function generateEmbedding(text: string): Promise<number[]> {
   if (!GEMINI_API_KEY) {
-    // Return mock embedding for demo mode
-    return new Array(768).fill(0).map(() => Math.random() - 0.5);
+    throw new Error("GEMINI_API_KEY is not configured. Cannot generate embeddings.");
   }
 
-  try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "models/text-embedding-004",
-          content: { parts: [{ text }] },
-        }),
-      }
-    );
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${GEMINI_API_KEY}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "models/text-embedding-004",
+        content: { parts: [{ text }] },
+      }),
+    }
+  );
 
-    if (!response.ok) throw new Error(`Embedding API error: ${response.status}`);
-    const data = await response.json();
-    return data.embedding?.values || new Array(768).fill(0);
-  } catch (error) {
-    console.error("Embedding error:", error);
-    return new Array(768).fill(0).map(() => Math.random() - 0.5);
-  }
+  if (!response.ok) throw new Error(`Embedding API error: ${response.status}`);
+  const data = await response.json();
+  return data.embedding?.values || new Array(768).fill(0);
 }
 
 function splitIntoChunks(text: string, maxLength: number = 800): Chunk[] {
@@ -157,9 +151,21 @@ export async function queryCompanyKnowledge(
   const supabase = await createServerClient();
   if (!supabase) return [];
 
-  const embedding = await generateEmbedding(query);
+  let embedding: number[];
+  try {
+    embedding = await generateEmbedding(query);
+  } catch {
+    // Fallback: text search if embeddings are unavailable
+    const { data: textData } = await supabase
+      .from("policy_chunks")
+      .select("content, metadata, policy_id, document_id")
+      .eq("company_id", companyId)
+      .textSearch("content", query, { type: "websearch" })
+      .limit(topK);
 
-  // Search via cosine similarity
+    return textData || [];
+  }
+
   const { data, error } = await supabase.rpc("match_policy_chunks", {
     query_embedding: embedding,
     match_count: topK,
@@ -167,7 +173,6 @@ export async function queryCompanyKnowledge(
   });
 
   if (error) {
-    // Fallback: text search if vector search fails
     console.error("Vector search error, falling back to text search:", error);
     const { data: textData } = await supabase
       .from("policy_chunks")

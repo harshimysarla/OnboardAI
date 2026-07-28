@@ -27,8 +27,8 @@ export default function Home() {
             <Link href="/login" className="rounded-xl bg-white px-8 py-3.5 text-sm font-semibold text-indigo-900 hover:bg-indigo-50 transition-colors shadow-lg">
               Get Started
             </Link>
-            <Link href="/login?role=admin" className="rounded-xl border border-indigo-400 px-8 py-3.5 text-sm font-semibold text-white hover:bg-indigo-800/50 transition-colors">
-              HR Demo Login
+            <Link href="/login" className="rounded-xl border border-indigo-400 px-8 py-3.5 text-sm font-semibold text-white hover:bg-indigo-800/50 transition-colors">
+              Sign In
             </Link>
           </div>
           <div className="mt-20 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">

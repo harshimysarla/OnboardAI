@@ -1,18 +1,16 @@
 import { createServerClient as createSSRClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
+import { getEnvVars, isSupabaseConfigured as checkConfigured } from "./env";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const vars = getEnvVars();
 
-export const hasCredentials = !!supabaseUrl && !!supabaseAnonKey;
+export const hasCredentials = checkConfigured();
 
-// Server-side: uses cookies from the request (SSR)
 export const createServerClient = async () => {
   if (!hasCredentials) return null;
   const cookieStore = await cookies();
-  return createSSRClient(supabaseUrl, supabaseAnonKey, {
+  return createSSRClient(vars.supabaseUrl, vars.supabaseAnonKey, {
     cookies: {
       getAll() {
         return cookieStore.getAll();
@@ -26,9 +24,8 @@ export const createServerClient = async () => {
   });
 };
 
-// Admin client (bypasses RLS) - synchronous creation
-const _supabaseAdmin = hasCredentials && serviceRoleKey
-  ? createClient(supabaseUrl, serviceRoleKey, {
+const _supabaseAdmin = hasCredentials && vars.serviceRoleKey
+  ? createClient(vars.supabaseUrl, vars.serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     })
   : null;

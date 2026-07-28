@@ -273,13 +273,13 @@ Guidelines:
 
       return { response: text, intent, sources };
     } catch (error) {
-      console.error("Gemini error, using demo fallback:", error);
+      console.error("Gemini error, using rule-based fallback:", error);
     }
   }
 
-  // Fallback: rule-based demo response
+  // Fallback: rule-based response
   return {
-    response: getDemoResponse(lastMessage, ragContext, employeeContext),
+    response: getFallbackResponse(lastMessage, ragContext, employeeContext),
     intent,
     sources,
   };
@@ -315,7 +315,7 @@ function detectIntent(message: string): RequestIntent | null {
   return { category, type, description: message, priority };
 }
 
-function getDemoResponse(message: string, context: string, employeeContext?: string): string {
+function getFallbackResponse(message: string, context: string, employeeContext?: string): string {
   const lower = message.toLowerCase();
 
   if (context) {

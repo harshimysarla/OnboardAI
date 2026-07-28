@@ -1,8 +1,8 @@
 "use client";
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, Users, ClipboardList, HelpCircle, BarChart3, Settings, Laptop, LogOut, Building2, FileText, Shield } from 'lucide-react';
+import { LayoutDashboard, Users, ClipboardList, HelpCircle, BarChart3, Settings, Laptop, LogOut, Building2, FileText } from 'lucide-react';
 
 interface SidebarProps {
   role: string;
@@ -24,7 +24,13 @@ const navItems = [
 
 export function Sidebar({ role, companyName, onClose }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const filtered = navItems.filter(item => item.roles.includes(role));
+
+  const handleSignOut = async () => {
+    try { await fetch("/api/auth", { method: "DELETE" }); } catch {}
+    router.push("/login");
+  };
 
   return (
     <div className='flex h-full flex-col bg-indigo-950 text-white'>
@@ -58,10 +64,10 @@ export function Sidebar({ role, companyName, onClose }: SidebarProps) {
         })}
       </nav>
       <div className='p-4 border-t border-indigo-800'>
-        <Link href='/login' className='flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-indigo-200 hover:bg-indigo-800/50 hover:text-white transition-colors'>
+        <button onClick={handleSignOut} className='flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-indigo-200 hover:bg-indigo-800/50 hover:text-white transition-colors'>
           <LogOut className='h-5 w-5 flex-shrink-0' />
           Sign Out
-        </Link>
+        </button>
       </div>
     </div>
   );

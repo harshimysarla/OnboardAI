@@ -1,23 +1,24 @@
 ﻿import { createClient } from "@supabase/supabase-js";
+import { getPublicConfig, isSupabaseConfigured as checkConfigured } from "./env";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const config = getPublicConfig();
 
-export const hasCredentials = !!supabaseUrl && !!supabaseAnonKey;
+export const isSupabaseConfigured = checkConfigured();
 
-export const supabase = hasCredentials
-  ? createClient(supabaseUrl!, supabaseAnonKey!)
-  : null;
+function createAnonClient() {
+  if (!checkConfigured()) return null;
+  return createClient(config.supabaseUrl, config.supabaseAnonKey, {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+    },
+  });
+}
 
-export const supabaseAdmin = hasCredentials && serviceRoleKey
-  ? createClient(supabaseUrl!, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } })
-  : null;
+const _client = createAnonClient();
 
-// Client-side: creates a browser-based supabase client
-export const createBrowserClient = () => {
-  if (!hasCredentials) return null;
-  return createClient(supabaseUrl!, supabaseAnonKey!);
-};
+export { _client as supabase };
 
-export const isSupabaseConfigured = hasCredentials;
+export function createBrowserClient() {
+  return createAnonClient();
+}

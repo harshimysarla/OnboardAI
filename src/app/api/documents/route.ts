@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
 
     // Upload to Supabase Storage
     const filePath = `${user.company_id}/${Date.now()}_${file.name}`;
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from("policy_docs")
       .upload(filePath, file);
 
@@ -61,9 +61,10 @@ export async function POST(request: NextRequest) {
     await indexPolicy(doc.id);
 
     return NextResponse.json(doc, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Upload failed";
     console.error("Upload error:", error);
-    return NextResponse.json({ error: error.message || "Upload failed" }, { status: 500 });
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 
@@ -85,8 +86,9 @@ export async function GET() {
 
     if (error) throw error;
     return NextResponse.json(data || []);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Internal error";
     console.error("Documents error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

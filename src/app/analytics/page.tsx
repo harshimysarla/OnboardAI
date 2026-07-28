@@ -4,11 +4,13 @@ import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LoadingSpinner } from "@/components/ui/loading";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Employee, SupportRequest } from "@/types";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, LineChart, Line, Legend
+  PieChart, Pie, Cell, Legend, PieLabelRenderProps
 } from "recharts";
+import { BarChart3 } from "lucide-react";
 
 const PIE_COLORS = ["#10b981", "#f59e0b", "#ef4444"];
 
@@ -42,17 +44,21 @@ function computeAnalytics(employees: Employee[], requests: SupportRequest[]): An
   const catMap = new Map<string, number>();
   requests.forEach(r => { catMap.set(r.category, (catMap.get(r.category) || 0) + 1); });
   const requestCategories = Array.from(catMap.entries()).map(([cat, count]) => ({ category: cat, count }));
+  const overdueTasks = employees.reduce((s, e) => s + Math.floor(e.progress < 50 ? 2 : 0), 0);
   return {
     avgCompletion,
     completionByDepartment,
     riskDistribution,
-    overdueTasks: employees.reduce((s, e) => s + Math.floor(e.progress < 50 ? 2 : 0), 0),
+    overdueTasks,
     requestCategories,
-    avgOnboardingTime: 45,
+    avgOnboardingTime: employees.length > 0 ? Math.round(employees.reduce((s, e) => s + Math.min((Date.now() - new Date(e.joining_date).getTime()) / (1000 * 60 * 60 * 24), 90), 0) / employees.length) : 0,
     trends: [
-      { month: "Jan", progress: 65 }, { month: "Feb", progress: 58 },
-      { month: "Mar", progress: 72 }, { month: "Apr", progress: 68 },
-      { month: "May", progress: 75 }, { month: "Jun", progress: 80 },
+      { month: "Jan", progress: avgCompletion },
+      { month: "Feb", progress: avgCompletion },
+      { month: "Mar", progress: avgCompletion },
+      { month: "Apr", progress: avgCompletion },
+      { month: "May", progress: avgCompletion },
+      { month: "Jun", progress: avgCompletion },
     ],
   };
 }
@@ -68,13 +74,26 @@ export default function AnalyticsPage() {
     ]).then(([emps, reqs]) => {
       const employees = Array.isArray(emps) ? emps : [];
       const requests = Array.isArray(reqs) ? reqs : [];
-      setData(computeAnalytics(employees, requests));
+      if (employees.length > 0) {
+        setData(computeAnalytics(employees, requests));
+      }
       setLoading(false);
-    });
+    }).catch(() => setLoading(false));
   }, []);
 
   if (loading) return <AppLayout><LoadingSpinner size="lg" /></AppLayout>;
-  if (!data) return null;
+
+  if (!data) {
+    return (
+      <AppLayout>
+        <EmptyState
+          icon={<BarChart3 className="h-12 w-12" />}
+          title="No analytics data"
+          description="Add employees and track onboarding to see analytics."
+        />
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
@@ -114,15 +133,19 @@ export default function AnalyticsPage() {
         <Card>
           <CardHeader><CardTitle>Completion by Department</CardTitle></CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={data.completionByDepartment}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="department" tick={{ fontSize: 11 }} />
-                <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
-                <Tooltip />
-                <Bar dataKey="completion" fill="#6366f1" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            {data.completionByDepartment.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={data.completionByDepartment}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="department" tick={{ fontSize: 11 }} />
+                  <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
+                  <Tooltip />
+                  <Bar dataKey="completion" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="text-sm text-gray-500 text-center py-8">No department data available</p>
+            )}
           </CardContent>
         </Card>
 
@@ -131,7 +154,7 @@ export default function AnalyticsPage() {
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
-                <Pie data={data.riskDistribution} cx="50%" cy="50%" innerRadius={60} outerRadius={100} dataKey="count" nameKey="level" label={({ level, count }: any) => `${level}: ${count}`}>
+                <Pie data={data.riskDistribution} cx="50%" cy="50%" innerRadius={60} outerRadius={100} dataKey="count" nameKey="level" label={(props: PieLabelRenderProps) => (props.name || "") + ": " + props.value}>
                   {data.riskDistribution.map((_, i: number) => <Cell key={i} fill={PIE_COLORS[i]} />)}
                 </Pie>
                 <Tooltip />
@@ -142,32 +165,21 @@ export default function AnalyticsPage() {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle>Onboarding Trends</CardTitle></CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={data.trends}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
-                <Tooltip />
-                <Line type="monotone" dataKey="progress" stroke="#6366f1" strokeWidth={2} dot={{ fill: "#6366f1", r: 4 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
           <CardHeader><CardTitle>Support Request Categories</CardTitle></CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={data.requestCategories} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis type="number" tick={{ fontSize: 11 }} />
-                <YAxis dataKey="category" type="category" tick={{ fontSize: 11 }} width={100} />
-                <Tooltip />
-                <Bar dataKey="count" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            {data.requestCategories.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={data.requestCategories} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis type="number" tick={{ fontSize: 11 }} />
+                  <YAxis dataKey="category" type="category" tick={{ fontSize: 11 }} width={100} />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="text-sm text-gray-500 text-center py-8">No request data available</p>
+            )}
           </CardContent>
         </Card>
       </div>

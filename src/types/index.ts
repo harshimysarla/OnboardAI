@@ -1,4 +1,4 @@
-export type UserRole = "admin" | "employee";
+export type UserRole = "admin" | "hr" | "manager" | "employee";
 
 export type RiskLevel = "green" | "yellow" | "red";
 
@@ -14,12 +14,14 @@ export type RequestIntent = "IT_ACCESS_REQUEST" | "HR_REQUEST" | "EQUIPMENT_REQU
 
 export interface Department {
   id: string;
+  company_id: string;
   name: string;
   created_at?: string;
 }
 
 export interface Profile {
   id: string;
+  company_id: string;
   email: string;
   full_name: string;
   role: UserRole;
@@ -29,11 +31,13 @@ export interface Profile {
 
 export interface Employee {
   id: string;
+  company_id: string;
   profile_id?: string;
   full_name: string;
   email: string;
   job_title: string;
   department: string;
+  department_id?: string;
   manager?: string;
   joining_date: string;
   progress: number;
@@ -45,6 +49,7 @@ export interface Employee {
 
 export interface OnboardingTemplate {
   id: string;
+  company_id: string;
   name: string;
   department: string;
   role_pattern?: string;
@@ -66,6 +71,7 @@ export interface OnboardingTask {
 export interface EmployeeTask {
   id: string;
   employee_id: string;
+  company_id?: string;
   task_id?: string;
   title: string;
   description?: string;
@@ -80,6 +86,7 @@ export interface EmployeeTask {
 
 export interface CompanyPolicy {
   id: string;
+  company_id: string;
   title: string;
   content: string;
   category: string;
@@ -88,6 +95,7 @@ export interface CompanyPolicy {
 
 export interface SupportRequest {
   id: string;
+  company_id?: string;
   employee_id: string;
   employee_name?: string;
   department?: string;
@@ -102,6 +110,7 @@ export interface SupportRequest {
 
 export interface ActivityLog {
   id: string;
+  company_id?: string;
   employee_id: string;
   action: string;
   details?: string;
@@ -153,12 +162,4 @@ export interface AnalyticsData {
   requestCategories: { category: string; count: number }[];
   avgOnboardingTime: number;
   trends: { month: string; progress: number }[];
-}
-
-export interface DemoUser {
-  id: string;
-  email: string;
-  full_name: string;
-  role: UserRole;
-  employee_id?: string;
 }

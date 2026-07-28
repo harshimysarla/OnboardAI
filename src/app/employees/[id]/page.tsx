@@ -12,49 +12,45 @@ import { calculateRiskAssessment } from "@/lib/risk-engine";
 import { getRiskColor, getRiskDot, formatDate, formatDateTime } from "@/lib/utils";
 import { Employee, EmployeeTask } from "@/types";
 import { ArrowLeft, Calendar, CheckCircle, Clock, AlertTriangle, ClipboardList, MessageSquare } from "lucide-react";
+import { useUser } from "@/lib/use-user";
 import Link from "next/link";
 
 export default function EmployeeDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { user } = useUser();
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [tasks, setTasks] = useState<EmployeeTask[]>([]);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
+  const [unresolvedCount, setUnresolvedCount] = useState(0);
 
   const employeeId = params.id as string;
 
-  useEffect(() => {
-    const stored = localStorage.getItem("onboardai_user");
-    if (stored) try {
-      setUser(JSON.parse(stored));
-    } catch {}
-    loadData();
-  }, [employeeId]);
-
   const loadData = async () => {
     setLoading(true);
-
     const [empRes, tasksRes, reqsRes] = await Promise.all([
       fetch("/api/employees?id=" + employeeId),
       fetch("/api/tasks?employeeId=" + employeeId),
       fetch("/api/requests"),
     ]);
+    const emp: Record<string, unknown> = await empRes.json();
+    const empTasks: unknown = await tasksRes.json();
+    const allReqs: unknown = await reqsRes.json();
+    const requests = (Array.isArray(allReqs) ? allReqs : []) as Record<string, unknown>[];
 
-    const emp = await empRes.json();
-    const empTasks = await tasksRes.json();
-    const allReqs = await reqsRes.json();
-    const requests = Array.isArray(allReqs) ? allReqs : [];
-
-    if (emp) {
-      setEmployee(emp);
-      setTasks(Array.isArray(empTasks) ? empTasks : []);
-      setUnresolvedCount(requests.filter((r: any) => r.employee_id === employeeId && r.status !== "Resolved").length);
+    if (emp && employeeId) {
+      setEmployee(emp as unknown as Employee);
+      setTasks(Array.isArray(empTasks) ? empTasks as unknown as EmployeeTask[] : []);
+      setUnresolvedCount(requests.filter(r => r.employee_id === employeeId && r.status !== "Resolved").length);
     }
     setLoading(false);
   };
 
-  const [unresolvedCount, setUnresolvedCount] = useState(0);
+  useEffect(() => {
+    if (!employeeId) return;
+    loadData(); // eslint-disable-line react-hooks/set-state-in-effect
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employeeId]);
 
   const handleCompleteTask = async (taskId: string) => {
     await fetch("/api/tasks", {

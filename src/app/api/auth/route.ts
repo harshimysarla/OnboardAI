@@ -5,12 +5,12 @@ import { authSchema, validate } from "@/lib/validation";
 
 export async function GET() {
   if (!isSupabaseConfigured) {
-    return NextResponse.json({ user: null, mode: "demo" });
+    return NextResponse.json({ user: null });
   }
 
   const supabase = await createServerClient();
   if (!supabase) {
-    return NextResponse.json({ user: null, mode: "demo" });
+    return NextResponse.json({ user: null });
   }
 
   const { data: { user }, error } = await supabase.auth.getUser();
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ session: data.session });
-  } catch (e) {
+  } catch {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 }

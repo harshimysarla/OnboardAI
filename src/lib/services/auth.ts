@@ -1,5 +1,5 @@
 import { createServerClient } from "@/lib/supabase-server";
-import { isSupabaseConfigured, supabaseAdmin } from "@/lib/supabase";
+import { isSupabaseConfigured } from "@/lib/supabase";
 
 export interface AuthenticatedUser {
   id: string;
@@ -65,6 +65,8 @@ export async function createProfile(params: {
   full_name: string;
   role: string;
 }): Promise<void> {
+  if (!isSupabaseConfigured) throw new Error("Supabase not configured");
+  const { supabaseAdmin } = await import("@/lib/supabase-server");
   if (!supabaseAdmin) throw new Error("Supabase admin client not configured");
   const { error } = await supabaseAdmin.from("profiles").insert(params);
   if (error) throw error;

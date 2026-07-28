@@ -10,23 +10,17 @@ import { Progress } from "@/components/ui/progress";
 import { Employee, EmployeeTask } from "@/types";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import { CheckCircle, Clock, ClipboardList, Calendar, ChevronDown, ChevronRight } from "lucide-react";
+import { useUser } from "@/lib/use-user";
 
 export default function OnboardingPage() {
+  const { user } = useUser();
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [tasks, setTasks] = useState<EmployeeTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
-  useEffect(() => {
-    const stored = localStorage.getItem("onboardai_user");
-    if (stored) try {
-      const u = JSON.parse(stored);
-      loadEmployeeData(u.id);
-    } catch {}
-    setLoading(false);
-  }, []);
-
   const loadEmployeeData = async (empId: string) => {
+    setLoading(true);
     const [empRes, tasksRes] = await Promise.all([
       fetch("/api/employees?id=" + empId),
       fetch("/api/tasks?employeeId=" + empId),
@@ -37,7 +31,13 @@ export default function OnboardingPage() {
       const empTasks = await tasksRes.json();
       setTasks(Array.isArray(empTasks) ? empTasks : []);
     }
+    setLoading(false);
   };
+
+  useEffect(() => {
+    if (!user || !user.employee_id) return;
+    loadEmployeeData(user.employee_id); // eslint-disable-line react-hooks/set-state-in-effect
+  }, [user]);
 
   const handleComplete = async (taskId: string) => {
     if (!employee) return;

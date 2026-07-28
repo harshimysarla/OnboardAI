@@ -2,16 +2,21 @@
 
 import { useState, useEffect, useRef } from "react";
 import { AppLayout } from "@/components/layout/app-layout";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading";
 import { Badge } from "@/components/ui/badge";
 import { ChatMessage, RequestIntent, RequestCategory, RequestPriority } from "@/types";
+
+interface AssistantMessage extends ChatMessage {
+  sources?: { title: string; content: string; section?: string; similarity?: number }[];
+}
 import { Send, Bot, User, AlertTriangle, CheckCircle, X } from "lucide-react";
+import { useUser } from "@/lib/use-user";
 
 export default function AssistantPage() {
-  const [user, setUser] = useState<any>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const { user } = useUser();
+  const [messages, setMessages] = useState<AssistantMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [pendingIntent, setPendingIntent] = useState<{
@@ -20,20 +25,18 @@ export default function AssistantPage() {
   } | null>(null);
   const [creating, setCreating] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const initialized = useRef(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem("onboardai_user");
-    if (stored) try {
-      const u = JSON.parse(stored);
-      setUser(u);
-      setMessages([{
-        id: "welcome",
-        role: "assistant",
-        content: `Hello! I'm your OnboardAI assistant. I can help with company policies, onboarding tasks, and support requests. How can I help you today?`,
-        created_at: new Date().toISOString(),
-      }]);
-    } catch {}
-  }, []);
+    if (!user || initialized.current) return;
+    initialized.current = true;
+    setMessages([{
+      id: "welcome",
+      role: "assistant",
+      content: "Hello! I'm your OnboardAI assistant. I can help with company policies, onboarding tasks, and support requests. How can I help you today?",
+      created_at: new Date().toISOString(),
+    }]);
+  }, [user]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -64,13 +67,14 @@ export default function AssistantPage() {
 
       const data = await res.json();
 
-      const assistantMessage: ChatMessage & { sources?: any[] } = {
+      const sources = (data.sources || []) as AssistantMessage["sources"];
+      const assistantMessage: AssistantMessage = {
         id: "msg-" + Date.now() + "-ai",
         role: "assistant",
         content: data.response,
         intent: data.intent,
         intent_details: data.intentDetails,
-        sources: data.sources,
+        sources,
         created_at: new Date().toISOString(),
       };
 
@@ -82,7 +86,7 @@ export default function AssistantPage() {
           details: data.intentDetails,
         });
       }
-    } catch (error) {
+    } catch {
       setMessages(prev => [...prev, {
         id: "msg-" + Date.now() + "-err",
         role: "assistant",
@@ -103,7 +107,7 @@ export default function AssistantPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          employee_id: user.id,
+          employee_id: user.employee_id,
           employee_name: user.name,
           department: "",
           category: pendingIntent.details.category,
@@ -118,11 +122,11 @@ export default function AssistantPage() {
       setMessages(prev => [...prev, {
         id: "msg-" + Date.now() + "-confirm",
         role: "assistant",
-        content: `✅ Support request created: **${pendingIntent.details.type}** (${pendingIntent.details.priority} priority). You can track its status in the Requests page.`,
+        content: "Support request created: " + pendingIntent.details.type + " (" + pendingIntent.details.priority + " priority). You can track its status in the Requests page.",
         created_at: new Date().toISOString(),
       }]);
       setPendingIntent(null);
-    } catch (error) {
+    } catch {
       setMessages(prev => [...prev, {
         id: "msg-" + Date.now() + "-err2",
         role: "assistant",
@@ -142,6 +146,8 @@ export default function AssistantPage() {
       handleSend();
     }
   };
+
+  if (!user) return null;
 
   return (
     <AppLayout>
@@ -163,13 +169,13 @@ export default function AssistantPage() {
                   )}
                   <div className={"max-w-[80%] rounded-2xl px-4 py-3 " + (msg.role === "user" ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-900")}>
                     <div className="text-sm whitespace-pre-wrap">{msg.content}</div>
-                    {(msg as any).sources && (msg as any).sources.length > 0 && (
+                    {msg.sources && msg.sources.length > 0 && (
                       <div className="mt-2 pt-2 border-t border-gray-200">
                         <p className="text-xs font-medium text-gray-500 mb-1">Sources:</p>
-                        {(msg as any).sources.map((s: any, i: number) => (
+                        {msg.sources.map((s, i) => (
                           <div key={i} className="text-xs text-gray-400 mb-0.5">
-                            📄 {s.title}{s.section ? ` — ${s.section}` : ""}
-                            {s.similarity ? ` (${s.similarity}% match)` : ""}
+                            {s.title}{s.section ? " - " + s.section : ""}
+                            {s.similarity ? " (" + s.similarity + "% match)" : ""}
                           </div>
                         ))}
                       </div>

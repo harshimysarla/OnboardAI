@@ -12,23 +12,16 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { getStatusColor, getPriorityColor, formatDate } from "@/lib/utils";
 import { SupportRequest } from "@/types";
 import { HelpCircle } from "lucide-react";
+import { useUser } from "@/lib/use-user";
 import Link from "next/link";
 
 export default function RequestsPage() {
-  const [user, setUser] = useState<any>(null);
+  const { user } = useUser();
   const [requests, setRequests] = useState<SupportRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
-
-  useEffect(() => {
-    const stored = localStorage.getItem("onboardai_user");
-    if (stored) try {
-      setUser(JSON.parse(stored));
-    } catch {}
-    loadRequests();
-  }, []);
 
   const loadRequests = async () => {
     setLoading(true);
@@ -37,6 +30,10 @@ export default function RequestsPage() {
     setRequests(Array.isArray(data) ? data : []);
     setLoading(false);
   };
+
+  useEffect(() => {
+    loadRequests(); // eslint-disable-line react-hooks/set-state-in-effect
+  }, []);
 
   const handleStatusChange = async (id: string, newStatus: string) => {
     await fetch("/api/requests", {
@@ -49,8 +46,8 @@ export default function RequestsPage() {
 
   if (loading) return <AppLayout><LoadingSpinner size="lg" /></AppLayout>;
 
-  const isAdmin = user?.role === "admin";
-  const filtered = isAdmin ? requests : requests.filter(r => r.employee_id === user?.id);
+  const isAdmin = user?.role === "admin" || user?.role === "hr";
+  const filtered = isAdmin ? requests : requests.filter(r => r.employee_id === user?.employee_id);
 
   const statusFiltered = filtered.filter(r => {
     if (statusFilter && r.status !== statusFilter) return false;
@@ -99,93 +96,95 @@ export default function RequestsPage() {
         </Card>
       </div>
 
-      <Card className="mb-6">
-        <CardContent className="p-4">
-          <div className="flex flex-wrap gap-4">
-            <Select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-              options={[{ value: "", label: "All Statuses" }, ...statuses.map(s => ({ value: s, label: s }))]} />
-            <Select value={priorityFilter} onChange={e => setPriorityFilter(e.target.value)}
-              options={[{ value: "", label: "All Priorities" }, ...priorities.map(p => ({ value: p, label: p }))]} />
-            <Select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}
-              options={[{ value: "", label: "All Categories" }, ...categories.map(c => ({ value: c, label: c }))]} />
-          </div>
-        </CardContent>
-      </Card>
-
-      {statusFiltered.length === 0 ? (
+      {filtered.length === 0 ? (
         <EmptyState
           icon={<HelpCircle className="h-12 w-12" />}
           title="No support requests"
-          description={isAdmin ? "No requests match your filters." : "You haven't created any support requests yet."}
+          description={isAdmin ? "No requests found." : "You haven't created any support requests yet."}
         />
       ) : (
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <THead>
-                <TR>
-                  <TH>ID</TH>
-                  {isAdmin && <TH>Employee</TH>}
-                  <TH>Request</TH>
-                  <TH>Category</TH>
-                  <TH>Priority</TH>
-                  <TH>Status</TH>
-                  <TH>Created</TH>
-                  {isAdmin && <TH>Action</TH>}
-                </TR>
-              </THead>
-              <TBody>
-                {statusFiltered.map(req => (
-                  <TR key={req.id}>
-                    <TD className="text-xs font-mono text-gray-500">{req.id}</TD>
-                    {isAdmin && (
-                      <TD>
-                        <Link href={"/employees/" + req.employee_id} className="font-medium text-indigo-600 hover:text-indigo-800">
-                          {req.employee_name}
-                        </Link>
-                      </TD>
-                    )}
-                    <TD>
-                      <p className="font-medium text-gray-900">{req.type}</p>
-                      <p className="text-xs text-gray-500 truncate max-w-[200px]">{req.description}</p>
-                    </TD>
-                    <TD><Badge variant="info">{req.category}</Badge></TD>
-                    <TD>
-                      <span className={"inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium " + getPriorityColor(req.priority)}>
-                        {req.priority}
-                      </span>
-                    </TD>
-                    <TD>
-                      {isAdmin ? (
-                        <select
-                          value={req.status}
-                          onChange={e => handleStatusChange(req.id, e.target.value)}
-                          className={"rounded-full border px-2.5 py-0.5 text-xs font-medium " + getStatusColor(req.status)}
-                        >
-                          <option value="Open">Open</option>
-                          <option value="In Progress">In Progress</option>
-                          <option value="Resolved">Resolved</option>
-                        </select>
-                      ) : (
-                        <span className={"inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium " + getStatusColor(req.status)}>
-                          {req.status}
-                        </span>
-                      )}
-                    </TD>
-                    <TD className="text-xs text-gray-500">{formatDate(req.created_at)}</TD>
-                    {isAdmin && (
-                      <TD>
-                        <Link href={"/employees/" + req.employee_id}>
-                          <Button variant="ghost" size="sm">View</Button>
-                        </Link>
-                      </TD>
-                    )}
+        <>
+          <Card className="mb-6">
+            <CardContent className="p-4">
+              <div className="flex flex-wrap gap-4">
+                <Select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+                  options={[{ value: "", label: "All Statuses" }, ...statuses.map(s => ({ value: s, label: s }))]} />
+                <Select value={priorityFilter} onChange={e => setPriorityFilter(e.target.value)}
+                  options={[{ value: "", label: "All Priorities" }, ...priorities.map(p => ({ value: p, label: p }))]} />
+                <Select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}
+                  options={[{ value: "", label: "All Categories" }, ...categories.map(c => ({ value: c, label: c }))]} />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-0">
+              <Table>
+                <THead>
+                  <TR>
+                    <TH>ID</TH>
+                    {isAdmin && <TH>Employee</TH>}
+                    <TH>Request</TH>
+                    <TH>Category</TH>
+                    <TH>Priority</TH>
+                    <TH>Status</TH>
+                    <TH>Created</TH>
+                    {isAdmin && <TH>Action</TH>}
                   </TR>
-                ))}
-              </TBody>
-            </Table>
-          </CardContent>
-        </Card>
+                </THead>
+                <TBody>
+                  {statusFiltered.map(req => (
+                    <TR key={req.id}>
+                      <TD className="text-xs font-mono text-gray-500">{req.id}</TD>
+                      {isAdmin && (
+                        <TD>
+                          <Link href={"/employees/" + req.employee_id} className="font-medium text-indigo-600 hover:text-indigo-800">
+                            {req.employee_name}
+                          </Link>
+                        </TD>
+                      )}
+                      <TD>
+                        <p className="font-medium text-gray-900">{req.type}</p>
+                        <p className="text-xs text-gray-500 truncate max-w-[200px]">{req.description}</p>
+                      </TD>
+                      <TD><Badge variant="info">{req.category}</Badge></TD>
+                      <TD>
+                        <span className={"inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium " + getPriorityColor(req.priority)}>
+                          {req.priority}
+                        </span>
+                      </TD>
+                      <TD>
+                        {isAdmin ? (
+                          <select
+                            value={req.status}
+                            onChange={e => handleStatusChange(req.id, e.target.value)}
+                            className={"rounded-full border px-2.5 py-0.5 text-xs font-medium " + getStatusColor(req.status)}
+                          >
+                            <option value="Open">Open</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Resolved">Resolved</option>
+                          </select>
+                        ) : (
+                          <span className={"inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium " + getStatusColor(req.status)}>
+                            {req.status}
+                          </span>
+                        )}
+                      </TD>
+                      <TD className="text-xs text-gray-500">{formatDate(req.created_at)}</TD>
+                      {isAdmin && (
+                        <TD>
+                          <Link href={"/employees/" + req.employee_id}>
+                            <Button variant="ghost" size="sm">View</Button>
+                          </Link>
+                        </TD>
+                      )}
+                    </TR>
+                  ))}
+                </TBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </>
       )}
     </AppLayout>
   );

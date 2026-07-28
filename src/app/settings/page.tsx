@@ -1,30 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { Shield, Bell, LogOut } from "lucide-react";
 import { isSupabaseConfigured } from "@/lib/supabase";
+import { useUser } from "@/lib/use-user";
 
 export default function SettingsPage() {
   const router = useRouter();
-  const [user, setUser] = useState<{ name: string; role: string; email: string } | null>(null);
-
-  useEffect(() => {
-    const stored = localStorage.getItem("onboardai_user");
-    if (stored) try { setUser(JSON.parse(stored)); } catch {}
-  }, []);
+  const { user } = useUser();
 
   const handleSignOut = async () => {
-    // Sign out from Supabase if configured
     if (isSupabaseConfigured) {
       try {
         await fetch("/api/auth", { method: "DELETE" });
       } catch {}
     }
-    localStorage.removeItem("onboardai_user");
     router.push("/login");
   };
 
