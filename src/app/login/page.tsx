@@ -5,10 +5,10 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { isSupabaseConfigured } from "@/lib/supabase";
 
 export default function LoginPage() {
   const router = useRouter();
+  const [companyCode, setCompanyCode] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -18,17 +18,12 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
 
-    if (!isSupabaseConfigured) {
-      setError("Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.");
-      return;
-    }
-
     setLoading(true);
     try {
       const res = await fetch("/api/auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ company_code: companyCode, email, password }),
       });
       if (res.ok) {
         router.push("/dashboard");
@@ -56,14 +51,18 @@ export default function LoginPage() {
           <p className="mt-1 text-sm text-gray-500">Sign in to your OnboardAI account</p>
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+            <Input label="Company Access Code" type="text" value={companyCode} onChange={(e) => setCompanyCode(e.target.value)} placeholder="MICRO-6X91" autoCapitalize="characters" />
             <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" />
             <Input label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
             {error && <p className="text-sm text-red-600">{error}</p>}
             <Button type="submit" className="w-full" loading={loading}>Sign In</Button>
           </form>
 
-          <p className="mt-6 text-center text-xs text-gray-400">
-            Contact your administrator for account setup.
+          <p className="mt-6 text-center text-sm text-gray-500">
+            Don&apos;t have an account?{" "}
+            <Link href="/register" className="font-medium text-indigo-600 hover:text-indigo-500">
+              Create one
+            </Link>
           </p>
         </div>
       </div>

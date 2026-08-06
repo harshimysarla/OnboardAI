@@ -4,21 +4,25 @@ import { Sidebar } from "./sidebar";
 import { Navbar } from "./navbar";
 import { LoadingSpinner } from "@/components/ui/loading";
 import { useUser } from "@/lib/use-user";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useUser();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!loading && !user) {
       router.push("/login");
+      return;
     }
-  }, [loading, user, router]);
+    if (!loading && user?.must_change_password && pathname !== "/setup") {
+      router.replace("/setup");
+    }
+  }, [loading, user, router, pathname]);
 
-  if (loading) return <LoadingSpinner size="lg" />;
-  if (!user) return null;
+  if (loading || !user) return <LoadingSpinner size="lg" />;
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">

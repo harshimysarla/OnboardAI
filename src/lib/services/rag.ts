@@ -1,7 +1,8 @@
-import { createServerClient, supabaseAdmin } from "@/lib/supabase-server";
-import { isSupabaseConfigured } from "@/lib/supabase";
-
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+import { connectDB } from "@/lib/db";
+import { Policy, PolicyChunk, PolicyDocument } from "@/lib/models";
+import { toId } from "@/lib/serialize";
+import { getEnvVars } from "@/lib/env";
+import { Types } from "mongoose";
 
 interface Chunk {
   content: string;
@@ -9,12 +10,13 @@ interface Chunk {
 }
 
 export async function generateEmbedding(text: string): Promise<number[]> {
-  if (!GEMINI_API_KEY) {
+  const geminiApiKey = getEnvVars().geminiApiKey;
+  if (!geminiApiKey) {
     throw new Error("GEMINI_API_KEY is not configured. Cannot generate embeddings.");
   }
 
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${GEMINI_API_KEY}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${geminiApiKey}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -30,7 +32,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
   return data.embedding?.values || new Array(768).fill(0);
 }
 
-function splitIntoChunks(text: string, maxLength: number = 800): Chunk[] {
+export function splitIntoChunks(text: string, maxLength: number = 800): Chunk[] {
   const chunks: Chunk[] = [];
   const paragraphs = text.split(/\n\n+/);
 
@@ -50,19 +52,13 @@ function splitIntoChunks(text: string, maxLength: number = 800): Chunk[] {
 }
 
 export async function indexPolicy(id: string) {
-  const supabase = supabaseAdmin || (await createServerClient());
-  if (!supabase) throw new Error("Database not configured");
+  const conn = await connectDB();
+  if (!conn) throw new Error("Database not configured");
 
-  const { data: policy, error } = await supabase
-    .from("company_policies")
-    .select("*")
-    .eq("id", id)
-    .single();
+  const policy = await Policy.findById(id).lean();
+  if (!policy) throw new Error("Policy not found");
 
-  if (error || !policy) throw error || new Error("Policy not found");
-
-  // Delete existing chunks for this policy
-  await supabase.from("policy_chunks").delete().eq("policy_id", id);
+  await PolicyChunk.deleteMany({ policy_id: id });
 
   const chunks = splitIntoChunks(policy.content);
   const embeddings = await Promise.all(
@@ -77,42 +73,30 @@ export async function indexPolicy(id: string) {
     metadata: { chunk_index: i, total_chunks: chunks.length, title: policy.title },
   }));
 
-  const { error: insertError } = await supabase
-    .from("policy_chunks")
-    .insert(rows);
-
-  if (insertError) throw insertError;
-}
-
-async function downloadFile(bucket: string, filePath: string): Promise<string> {
-  const supabase = supabaseAdmin || (await createServerClient());
-  if (!supabase) throw new Error("Database not configured");
-
-  const { data, error } = await supabase.storage.from(bucket).download(filePath);
-  if (error) throw error;
-
-  const text = await data.text();
-  return text;
+  await PolicyChunk.insertMany(rows);
 }
 
 export async function indexDocument(documentId: string) {
-  const supabase = supabaseAdmin || (await createServerClient());
-  if (!supabase) throw new Error("Database not configured");
+  const conn = await connectDB();
+  if (!conn) throw new Error("Database not configured");
 
-  const { data: doc, error } = await supabase
-    .from("policy_documents")
-    .select("*")
-    .eq("id", documentId)
-    .single();
+  const doc = await PolicyDocument.findById(documentId).lean();
+  if (!doc) throw new Error("Document not found");
 
-  if (error || !doc) throw error || new Error("Document not found");
-
-  // Extract text from the document stored in Supabase Storage
   let text = doc.title;
-  if (doc.file_path) {
+  const fileType = doc.file_type || "";
+  const isTextFile =
+    fileType.startsWith("text/") ||
+    fileType.includes("json") ||
+    fileType.includes("xml") ||
+    /\.(txt|md|markdown|csv|json|xml|html?)$/i.test(doc.file_url || "");
+
+  if (doc.file_url && isTextFile) {
     try {
-      const fileContent = await downloadFile("policy_docs", doc.file_path);
-      text = fileContent;
+      const response = await fetch(doc.file_url);
+      if (response.ok) {
+        text = await response.text();
+      }
     } catch (dlError) {
       console.error("Could not download document file, using title only:", dlError);
     }
@@ -123,22 +107,22 @@ export async function indexDocument(documentId: string) {
     chunks.map((c) => generateEmbedding(c.content))
   );
 
-  // Delete existing chunks for this document
-  await supabase.from("policy_chunks").delete().eq("document_id", doc.id);
+  await PolicyChunk.deleteMany({ document_id: documentId });
 
   const rows = chunks.map((chunk, i) => ({
     company_id: doc.company_id,
-    document_id: doc.id,
+    document_id: documentId,
     content: chunk.content,
     embedding: embeddings[i],
-    metadata: { chunk_index: i, total_chunks: chunks.length, document_title: doc.title, source: doc.file_path },
+    metadata: {
+      chunk_index: i,
+      total_chunks: chunks.length,
+      document_title: doc.title,
+      source: doc.file_url,
+    },
   }));
 
-  const { error: insertError } = await supabase
-    .from("policy_chunks")
-    .insert(rows);
-
-  if (insertError) throw insertError;
+  await PolicyChunk.insertMany(rows);
 }
 
 export async function queryCompanyKnowledge(
@@ -146,45 +130,73 @@ export async function queryCompanyKnowledge(
   companyId: string,
   topK: number = 5
 ) {
-  if (!isSupabaseConfigured) return [];
-
-  const supabase = await createServerClient();
-  if (!supabase) return [];
+  const conn = await connectDB();
+  if (!conn) return [];
 
   let embedding: number[];
   try {
     embedding = await generateEmbedding(query);
   } catch {
-    // Fallback: text search if embeddings are unavailable
-    const { data: textData } = await supabase
-      .from("policy_chunks")
-      .select("content, metadata, policy_id, document_id")
-      .eq("company_id", companyId)
-      .textSearch("content", query, { type: "websearch" })
-      .limit(topK);
-
-    return textData || [];
+    return await textSearchFallback(query, companyId, topK);
   }
 
-  const { data, error } = await supabase.rpc("match_policy_chunks", {
-    query_embedding: embedding,
-    match_count: topK,
-    p_company_id: companyId,
-  });
+  // MongoDB Atlas Vector Search (requires an Atlas Vector Search index
+  // on policychunks.embedding). Falls back to text search when unavailable.
+  try {
+    const companyFilter = Types.ObjectId.isValid(companyId)
+      ? new Types.ObjectId(companyId)
+      : companyId;
 
-  if (error) {
-    console.error("Vector search error, falling back to text search:", error);
-    const { data: textData } = await supabase
-      .from("policy_chunks")
-      .select("content, metadata, policy_id, document_id")
-      .eq("company_id", companyId)
-      .textSearch("content", query, { type: "websearch" })
-      .limit(topK);
+    const result = await PolicyChunk.aggregate([
+      {
+        $vectorSearch: {
+          index: "policy_chunks_vector",
+          path: "embedding",
+          queryVector: embedding,
+          numCandidates: 100,
+          limit: topK,
+          filter: { company_id: companyFilter },
+        },
+      },
+      {
+        $project: {
+          content: 1,
+          metadata: 1,
+          policy_id: 1,
+          document_id: 1,
+          score: { $meta: "vectorSearchScore" },
+        },
+      },
+    ]);
 
-    return textData || [];
+    if (result.length > 0) {
+      return result.map((r) => ({
+        content: r.content,
+        metadata: r.metadata,
+        policy_id: toId(r.policy_id),
+        document_id: toId(r.document_id),
+        similarity: r.score,
+      }));
+    }
+  } catch (err) {
+    console.error("Vector search error, falling back to text search:", err);
   }
 
-  return data || [];
+  return await textSearchFallback(query, companyId, topK);
+}
+
+async function textSearchFallback(query: string, companyId: string, topK: number) {
+  const regex = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+  const chunks = await PolicyChunk.find({ company_id: companyId, content: regex })
+    .limit(topK)
+    .lean();
+
+  return chunks.map((c) => ({
+    content: c.content,
+    metadata: c.metadata,
+    policy_id: toId(c.policy_id),
+    document_id: toId(c.document_id),
+  }));
 }
 
 export async function getCompanyKnowledgeContext(
@@ -198,13 +210,19 @@ export async function getCompanyKnowledgeContext(
   }
 
   const seenContents = new Set<string>();
-  const uniqueChunks: { content?: string; metadata?: Record<string, unknown>; similarity?: number }[] = [];
+  const uniqueChunks: {
+    content?: string;
+    metadata?: Record<string, unknown>;
+    similarity?: number;
+  }[] = [];
 
   for (const chunk of chunks) {
     const key = (chunk as { content?: string }).content?.substring(0, 100);
     if (!seenContents.has(key || "")) {
       seenContents.add(key || "");
-      uniqueChunks.push(chunk as { content?: string; metadata?: Record<string, unknown>; similarity?: number });
+      uniqueChunks.push(
+        chunk as { content?: string; metadata?: Record<string, unknown>; similarity?: number }
+      );
     }
   }
 
@@ -214,11 +232,20 @@ export async function getCompanyKnowledgeContext(
     .join("\n\n---\n\n");
 
   const sources = uniqueChunks.map((c) => ({
-    title: (c.metadata?.title as string) || (c.metadata?.document_title as string) || "Policy Document",
+    title:
+      (c.metadata?.title as string) ||
+      (c.metadata?.document_title as string) ||
+      "Policy Document",
     content: c.content?.substring(0, 200) || "",
-    section: c.metadata?.chunk_index !== undefined ? `Section ${(c.metadata.chunk_index as number) + 1}` : "",
+    section:
+      c.metadata?.chunk_index !== undefined
+        ? `Section ${(c.metadata.chunk_index as number) + 1}`
+        : "",
     source: (c.metadata?.source as string) || "",
-    similarity: c.similarity ? Math.round((1 - c.similarity) * 100) : undefined,
+    similarity:
+      c.similarity !== undefined
+        ? Math.round((1 - c.similarity) * 100)
+        : undefined,
   }));
 
   return { context, sources };

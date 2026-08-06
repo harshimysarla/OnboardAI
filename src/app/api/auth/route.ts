@@ -1,60 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase-server";
-import { isSupabaseConfigured } from "@/lib/supabase";
+import { isDatabaseConfigured } from "@/lib/env";
 import { authSchema, validate } from "@/lib/validation";
+import {
+  getAuthenticatedUser,
+  loginUser,
+  logoutUser,
+  rotateRefreshToken,
+  REFRESH_TOKEN_COOKIE,
+} from "@/lib/services/auth";
+import { cookies } from "next/headers";
 
 export async function GET() {
-  if (!isSupabaseConfigured) {
+  if (!isDatabaseConfigured()) {
     return NextResponse.json({ user: null });
   }
 
-  const supabase = await createServerClient();
-  if (!supabase) {
-    return NextResponse.json({ user: null });
+  let user = await getAuthenticatedUser();
+
+  // Access token invalid/expired — try rotating with refresh token
+  if (!user) {
+    const cookieStore = await cookies();
+    const refreshToken = cookieStore.get(REFRESH_TOKEN_COOKIE)?.value;
+    if (refreshToken) {
+      try {
+        const rotated = await rotateRefreshToken(refreshToken);
+        if (rotated) {
+          user = await getAuthenticatedUser();
+        }
+      } catch {
+        await logoutUser();
+      }
+    }
   }
 
-  const { data: { user }, error } = await supabase.auth.getUser();
-  if (error || !user) {
-    return NextResponse.json({ user: null });
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*, companies(name)")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile) {
-    return NextResponse.json({ user: null });
-  }
-
-  const { data: employee } = await supabase
-    .from("employees")
-    .select("id")
-    .eq("profile_id", user.id)
-    .maybeSingle();
-
-  return NextResponse.json({
-    user: {
-      id: user.id,
-      email: user.email,
-      full_name: profile.full_name,
-      company_id: profile.company_id,
-      company_name: profile.companies?.name || "",
-      role: profile.role,
-      employee_id: employee?.id,
-    },
-  });
+  return NextResponse.json({ user });
 }
 
 export async function POST(request: NextRequest) {
-  if (!isSupabaseConfigured) {
-    return NextResponse.json({ error: "Supabase not configured" }, { status: 400 });
-  }
-
-  const supabase = await createServerClient();
-  if (!supabase) {
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+  if (!isDatabaseConfigured()) {
+    return NextResponse.json({ error: "Database not configured" }, { status: 400 });
   }
 
   try {
@@ -62,23 +46,19 @@ export async function POST(request: NextRequest) {
     const { data: parsed, error: validationError } = validate(authSchema, body);
     if (validationError) return validationError;
 
-    const { data, error } = await supabase.auth.signInWithPassword({ email: parsed.email, password: parsed.password });
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 401 });
+    const result = await loginUser(parsed.company_code, parsed.email, parsed.password);
+    if ("error" in result) {
+      return NextResponse.json({ error: result.error }, { status: 401 });
     }
 
-    return NextResponse.json({ session: data.session });
+    const response = NextResponse.json({ success: true });
+    return response;
   } catch {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 }
 
 export async function DELETE() {
-  if (!isSupabaseConfigured) {
-    return NextResponse.json({ success: true });
-  }
-
-  const supabase = await createServerClient();
-  await supabase?.auth.signOut();
+  await logoutUser();
   return NextResponse.json({ success: true });
 }

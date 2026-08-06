@@ -1,27 +1,20 @@
-import { createServerClient } from "@/lib/supabase-server";
-import { isSupabaseConfigured } from "@/lib/supabase";
+import { connectDB } from "@/lib/db";
+import { SupportRequest, ActivityLog } from "@/lib/models";
 import { requireAuth } from "./auth";
+import { serializeDoc, serializeMany } from "@/lib/serialize";
 
 export async function getSupportRequests() {
-  if (!isSupabaseConfigured) return null;
+  const conn = await connectDB();
+  if (!conn) return null;
   const user = await requireAuth();
-  const supabase = await createServerClient();
-  if (!supabase) return null;
 
-  let query = supabase
-    .from("support_requests")
-    .select("*")
-    .eq("company_id", user.company_id)
-    .order("created_at", { ascending: false });
-
-  // Employees can only see their own requests
+  const query: Record<string, unknown> = { company_id: user.company_id };
   if (user.role === "employee" && user.employee_id) {
-    query = query.eq("employee_id", user.employee_id);
+    query.employee_id = user.employee_id;
   }
 
-  const { data, error } = await query;
-  if (error) throw error;
-  return data;
+  const requests = await SupportRequest.find(query).sort({ created_at: -1 }).lean();
+  return serializeMany(requests);
 }
 
 export async function createSupportRequest(params: {
@@ -34,49 +27,48 @@ export async function createSupportRequest(params: {
   description: string;
   priority: string;
 }) {
-  const supabase = await createServerClient();
-  if (!supabase) throw new Error("Database not configured");
+  const conn = await connectDB();
+  if (!conn) throw new Error("Database not configured");
 
-  const { data, error } = await supabase
-    .from("support_requests")
-    .insert({
-      company_id: params.company_id,
-      employee_id: params.employee_id,
-      employee_name: params.employee_name,
-      department: params.department,
-      category: params.category,
-      type: params.type,
-      description: params.description,
-      priority: params.priority,
-      status: "Open",
-    })
-    .select()
-    .single();
-
-  if (error) throw error;
-
-  await supabase.from("activity_logs").insert({
+  const request = await SupportRequest.create({
     company_id: params.company_id,
-    employee_id: params.employee_id,
+    employee_id: params.employee_id || undefined,
+    employee_name: params.employee_name,
+    department: params.department,
+    category: params.category,
+    type: params.type,
+    description: params.description,
+    priority: params.priority,
+    status: "Open",
+  });
+
+  await ActivityLog.create({
+    company_id: params.company_id,
+    employee_id: params.employee_id || undefined,
     action: "Request created",
     details: `${params.type} request (${params.category})`,
   });
 
-  return data;
+  return serializeDoc(request.toObject());
 }
 
 export async function updateRequestStatus(requestId: string, status: string) {
   const user = await requireAuth();
-  const supabase = await createServerClient();
-  if (!supabase) throw new Error("Database not configured");
+  const conn = await connectDB();
+  if (!conn) throw new Error("Database not configured");
 
   if (user.role === "employee") throw new Error("Only HR can update request status");
 
-  const { error } = await supabase
-    .from("support_requests")
-    .update({ status, updated_at: new Date().toISOString() })
-    .eq("id", requestId)
-    .eq("company_id", user.company_id);
+  const result = await SupportRequest.updateOne(
+    { _id: requestId, company_id: user.company_id },
+    { status }
+  );
+  if (result.matchedCount === 0) throw new Error("Request not found");
 
-  if (error) throw error;
+  await ActivityLog.create({
+    company_id: user.company_id,
+    employee_id: undefined,
+    action: "Request status updated",
+    details: `Request ${requestId} marked as ${status}`,
+  });
 }

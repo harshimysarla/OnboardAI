@@ -1,14 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase-server";
-import { isSupabaseConfigured } from "@/lib/supabase";
+import { isDatabaseConfigured, isCloudinaryConfigured } from "@/lib/env";
+import { connectDB } from "@/lib/db";
+import { PolicyDocument } from "@/lib/models";
 import { requireAuth } from "@/lib/services/auth";
-import { indexPolicy } from "@/lib/services/rag";
+import { indexDocument } from "@/lib/services/rag";
+import { uploadToCloudinary } from "@/lib/services/cloudinary";
 import { documentUploadSchema, validate } from "@/lib/validation";
+import { serializeDoc, serializeMany } from "@/lib/serialize";
 
 export async function POST(request: NextRequest) {
   try {
-    if (!isSupabaseConfigured) {
-      return NextResponse.json({ error: "Supabase not configured" }, { status: 400 });
+    if (!isDatabaseConfigured()) {
+      return NextResponse.json({ error: "Database not configured" }, { status: 400 });
+    }
+    if (!isCloudinaryConfigured()) {
+      return NextResponse.json({ error: "Cloudinary not configured" }, { status: 500 });
     }
 
     const user = await requireAuth();
@@ -28,39 +34,33 @@ export async function POST(request: NextRequest) {
     if (validationError) return validationError;
     const title = parsed.title;
 
-    const supabase = await createServerClient();
-    if (!supabase) {
-      return NextResponse.json({ error: "Server error" }, { status: 500 });
-    }
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const safeStem = file.name.replace(/[^\w.\-]/g, "_").replace(/\.[^.]+$/, "");
+    const fileUrl = await uploadToCloudinary(
+      buffer,
+      `onboardai/${user.company_id}`,
+      `${Date.now()}_${safeStem}`,
+      "raw"
+    );
 
-    // Upload to Supabase Storage
-    const filePath = `${user.company_id}/${Date.now()}_${file.name}`;
-    const { error: uploadError } = await supabase.storage
-      .from("policy_docs")
-      .upload(filePath, file);
+    const conn = await connectDB();
+    if (!conn) throw new Error("Database not configured");
 
-    if (uploadError) throw uploadError;
+    const doc = await PolicyDocument.create({
+      company_id: user.company_id,
+      uploaded_by: user.id,
+      title,
+      file_url: fileUrl,
+      file_type: file.type,
+      file_size: file.size,
+    });
 
-    // Create document record
-    const { data: doc, error: docError } = await supabase
-      .from("policy_documents")
-      .insert({
-        company_id: user.company_id,
-        title,
-        file_path: filePath,
-        file_type: file.type,
-        file_size: file.size,
-        uploaded_by: user.id,
-      })
-      .select()
-      .single();
+    // Index document for RAG (non-blocking)
+    indexDocument(doc._id.toString()).catch((err) =>
+      console.error("Document indexing failed (non-blocking):", err)
+    );
 
-    if (docError) throw docError;
-
-    // Index document for RAG
-    await indexPolicy(doc.id);
-
-    return NextResponse.json(doc, { status: 201 });
+    return NextResponse.json(serializeDoc(doc.toObject()), { status: 201 });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Upload failed";
     console.error("Upload error:", error);
@@ -70,22 +70,19 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   try {
-    if (!isSupabaseConfigured) {
+    if (!isDatabaseConfigured()) {
       return NextResponse.json([]);
     }
 
     const user = await requireAuth();
-    const supabase = await createServerClient();
-    if (!supabase) return NextResponse.json([]);
+    const conn = await connectDB();
+    if (!conn) return NextResponse.json([]);
 
-    const { data, error } = await supabase
-      .from("policy_documents")
-      .select("*")
-      .eq("company_id", user.company_id)
-      .order("created_at", { ascending: false });
+    const docs = await PolicyDocument.find({ company_id: user.company_id })
+      .sort({ created_at: -1 })
+      .lean();
 
-    if (error) throw error;
-    return NextResponse.json(data || []);
+    return NextResponse.json(serializeMany(docs));
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Internal error";
     console.error("Documents error:", error);

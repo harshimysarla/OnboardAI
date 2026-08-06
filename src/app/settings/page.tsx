@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { Shield, Bell, LogOut } from "lucide-react";
-import { isSupabaseConfigured } from "@/lib/supabase";
 import { useUser } from "@/lib/use-user";
 
 export default function SettingsPage() {
@@ -13,11 +12,9 @@ export default function SettingsPage() {
   const { user } = useUser();
 
   const handleSignOut = async () => {
-    if (isSupabaseConfigured) {
-      try {
-        await fetch("/api/auth", { method: "DELETE" });
-      } catch {}
-    }
+    try {
+      await fetch("/api/auth", { method: "DELETE" });
+    } catch {}
     router.push("/login");
   };
 
@@ -47,9 +44,6 @@ export default function SettingsPage() {
               <span className="font-medium text-gray-700">Role: </span>
               <span className="capitalize text-gray-500">{user.role}</span>
             </div>
-            {isSupabaseConfigured && (
-              <p className="text-xs text-emerald-600">Connected to Supabase</p>
-            )}
           </CardContent>
         </Card>
 
@@ -74,12 +68,10 @@ export default function SettingsPage() {
           <CardContent className="space-y-4">
             <div className="flex items-center gap-3 text-sm text-gray-700">
               <Shield className="h-5 w-5 text-gray-400" />
-              {isSupabaseConfigured ? "Production Mode" : "Demo Mode"}
+              Production Mode
             </div>
             <p className="text-xs text-gray-400">
-              {isSupabaseConfigured
-                ? "Connected to Supabase. Data is persisted."
-                : "No database configured. Data is stored in memory only."}
+              Data is persisted in MongoDB.
             </p>
             <Button variant="danger" onClick={handleSignOut}>
               <LogOut className="mr-2 h-4 w-4" /> Sign Out

@@ -199,14 +199,16 @@ ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE activity_logs ENABLE ROW LEVEL SECURITY;
 
 -- Helper function to get current user's company_id
+-- SECURITY DEFINER (with fixed search_path) so RLS on profiles does not recurse
 CREATE OR REPLACE FUNCTION get_user_company_id()
-RETURNS UUID LANGUAGE SQL STABLE AS $$
+RETURNS UUID LANGUAGE SQL STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT company_id FROM profiles WHERE id = auth.uid();
 $$;
 
 -- Helper function to check user role
+-- SECURITY DEFINER (with fixed search_path) so RLS on profiles does not recurse
 CREATE OR REPLACE FUNCTION get_user_role()
-RETURNS TEXT LANGUAGE SQL STABLE AS $$
+RETURNS TEXT LANGUAGE SQL STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT role FROM profiles WHERE id = auth.uid();
 $$;
 

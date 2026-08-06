@@ -7,9 +7,42 @@ export const dateStringSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2
 export const uuidSchema = z.string().uuid("Must be a valid UUID");
 
 // ─── Auth ───────────────────────────────────────────────────────────
+export const accessCodeSchema = z
+  .string()
+  .min(3, "Company access code is required")
+  .max(20, "Company access code must be 20 characters or fewer")
+  .regex(/^[A-Za-z0-9_-]+$/, "Company access code may only contain letters, numbers, hyphens (-) and underscores (_)");
+
+export const changeAccessCodeSchema = z.object({
+  code: z
+    .string()
+    .min(3, "Company Access Code must be at least 3 characters")
+    .max(20, "Company Access Code must be at most 20 characters")
+    .regex(/^[A-Za-z0-9_-]+$/, "Company Access Code may only contain letters, numbers, hyphens (-) and underscores (_)")
+    .optional(),
+});
+
 export const authSchema = z.object({
+  company_code: accessCodeSchema,
   email: emailSchema,
   password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+export const registerSchema = z.object({
+  full_name: nonEmptyString,
+  email: emailSchema,
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  company_name: nonEmptyString,
+});
+
+export const changePasswordSchema = z.object({
+  new_password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+export const updateProfileSchema = z.object({
+  phone: z.string().optional(),
+  language: z.string().optional(),
+  timezone: z.string().optional(),
 });
 
 // ─── Chat ───────────────────────────────────────────────────────────
@@ -123,6 +156,22 @@ export const updateTemplateTaskSchema = z.object({
   mandatory: z.boolean().optional(),
   day_offset: z.number().int().min(0).optional(),
   sort_order: z.number().int().min(0).optional(),
+});
+
+// ─── Leaves ─────────────────────────────────────────────────────────
+export const leaveType = z.enum(["annual", "sick", "casual", "unpaid", "other"]);
+export const leaveStatus = z.enum(["pending", "hr_pending", "approved", "rejected", "cancelled"]);
+
+export const applyLeaveSchema = z.object({
+  leave_type: leaveType,
+  start_date: nonEmptyString,
+  end_date: nonEmptyString,
+  reason: z.string().optional(),
+});
+
+export const decideLeaveSchema = z.object({
+  id: nonEmptyString,
+  decision: z.enum(["approve", "reject"]),
 });
 
 // ─── Search / Filters ───────────────────────────────────────────────

@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isSupabaseConfigured } from "@/lib/supabase";
-import { createServerClient } from "@/lib/supabase-server";
+import { isDatabaseConfigured } from "@/lib/env";
 import { requireAuth } from "@/lib/services/auth";
-import { getEmployees, createEmployee, getMyProfile } from "@/lib/services/employees";
+import { getEmployees, createEmployee, getMyProfile, getEmployeeById } from "@/lib/services/employees";
 import { createEmployeeSchema, validate } from "@/lib/validation";
 
 export async function GET(request: NextRequest) {
   try {
-    if (!isSupabaseConfigured) {
-      return NextResponse.json({ error: "Supabase not configured" }, { status: 400 });
+    if (!isDatabaseConfigured()) {
+      return NextResponse.json({ error: "Database not configured" }, { status: 400 });
     }
 
     const user = await requireAuth();
@@ -16,20 +15,8 @@ export async function GET(request: NextRequest) {
     const employeeId = searchParams.get("id");
 
     if (employeeId) {
-      const supabase = await createServerClient();
-      if (!supabase) return NextResponse.json({ error: "Server error" }, { status: 500 });
-
-      const { data } = await supabase
-        .from("employees")
-        .select("*, departments(name)")
-        .eq("id", employeeId)
-        .eq("company_id", user.company_id)
-        .single();
-
-      if (!data) {
-        return NextResponse.json(null);
-      }
-      return NextResponse.json({ ...data, department: data.departments?.name || "" });
+      const employee = await getEmployeeById(employeeId);
+      return NextResponse.json(employee);
     }
 
     if (user.role === "employee" && user.employee_id) {
@@ -51,8 +38,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    if (!isSupabaseConfigured) {
-      return NextResponse.json({ error: "Supabase not configured" }, { status: 400 });
+    if (!isDatabaseConfigured()) {
+      return NextResponse.json({ error: "Database not configured" }, { status: 400 });
     }
 
     const body = await request.json();

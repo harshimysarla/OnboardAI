@@ -1,22 +1,32 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { createServerClient } from "./lib/supabase-server";
+import { jwtVerify } from "jose";
+import { isDatabaseConfigured } from "./lib/env";
 
-const publicRoutes = new Set(["/", "/login"]);
+const publicRoutes = new Set(["/", "/login", "/register"]);
 const apiPrefix = "/api/";
+
+const secret = new TextEncoder().encode(process.env.JWT_SECRET || "");
+
+async function getSessionUser(request: NextRequest) {
+  if (!process.env.JWT_SECRET) return null;
+  const token = request.cookies.get("onboardai_token")?.value;
+  if (!token) return null;
+  try {
+    const { payload } = await jwtVerify(token, secret);
+    if (!payload.sub) return null;
+    return {
+      userId: payload.sub as string,
+      role: (payload.role as string) || "employee",
+      companyId: (payload.companyId as string) || "",
+    };
+  } catch {
+    return null;
+  }
+}
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
-
-  // Allow public routes
-  if (publicRoutes.has(pathname)) {
-    return NextResponse.next();
-  }
-
-  // Allow API auth endpoint (POST for login is unauthenticated)
-  if (pathname === "/api/auth" && request.method === "POST") {
-    return NextResponse.next();
-  }
 
   // Allow static assets
   if (
@@ -26,27 +36,32 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // API routes still need authentication enforced at handler level
-  if (pathname.startsWith(apiPrefix)) {
+  // Allow API auth endpoint (POST for login is unauthenticated)
+  if (pathname === "/api/auth" && request.method === "POST") {
     return NextResponse.next();
   }
 
-  // Check authentication for page routes
-  try {
-    const supabase = await createServerClient();
-    if (supabase) {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        const loginUrl = new URL("/login", request.url);
-        loginUrl.searchParams.set("redirect", pathname);
-        return NextResponse.redirect(loginUrl);
-      }
-    }
-  } catch {
-    // If auth check fails, allow through (handler-level auth will catch it)
+  if (!isDatabaseConfigured()) {
+    return NextResponse.next();
   }
 
-  return NextResponse.next();
+  const user = await getSessionUser(request);
+
+  // Check authentication for page routes
+  if (!pathname.startsWith(apiPrefix)) {
+    if (!user && !publicRoutes.has(pathname)) {
+      const loginUrl = new URL("/login", request.url);
+      loginUrl.searchParams.set("redirect", pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    if (user && pathname === "/login") {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
+  }
+
+  const response = NextResponse.next();
+  return response;
 }
 
 export const config = {

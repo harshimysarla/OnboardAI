@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, Users, ClipboardList, HelpCircle, BarChart3, Settings, Laptop, LogOut, Building2, FileText } from 'lucide-react';
+import { LayoutDashboard, Users, ClipboardList, HelpCircle, BarChart3, Settings, Laptop, LogOut, Building2, FileText, Clock, CalendarDays, Megaphone, GraduationCap, Package, FolderOpen, BookOpen, CalendarCheck, Trophy, Bell } from 'lucide-react';
 
 interface SidebarProps {
   role: string;
@@ -14,6 +14,16 @@ const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'hr', 'manager', 'employee'] },
   { href: '/employees', label: 'Employees', icon: Users, roles: ['admin', 'hr'] },
   { href: '/onboarding', label: 'Onboarding', icon: ClipboardList, roles: ['employee', 'manager'] },
+  { href: '/attendance', label: 'Attendance', icon: Clock, roles: ['admin', 'hr', 'employee', 'manager'] },
+  { href: '/leaves', label: 'Leave', icon: CalendarDays, roles: ['admin', 'hr', 'employee', 'manager'] },
+  { href: '/announcements', label: 'Announcements', icon: Megaphone, roles: ['admin', 'hr', 'employee', 'manager'] },
+  { href: '/training', label: 'Training', icon: GraduationCap, roles: ['admin', 'hr', 'employee', 'manager'] },
+  { href: '/assets', label: 'Assets', icon: Package, roles: ['admin', 'hr', 'employee', 'manager'] },
+  { href: '/documents', label: 'Documents', icon: FolderOpen, roles: ['admin', 'hr', 'employee', 'manager'] },
+  { href: '/directory', label: 'Directory', icon: BookOpen, roles: ['admin', 'hr', 'employee', 'manager'] },
+  { href: '/calendar', label: 'Calendar', icon: CalendarCheck, roles: ['admin', 'hr', 'employee', 'manager'] },
+  { href: '/rewards', label: 'Rewards', icon: Trophy, roles: ['admin', 'hr', 'employee', 'manager'] },
+  { href: '/notifications', label: 'Notifications', icon: Bell, roles: ['admin', 'hr', 'employee', 'manager'] },
   { href: '/requests', label: 'Requests', icon: HelpCircle, roles: ['admin', 'hr', 'employee', 'manager'] },
   { href: '/analytics', label: 'Analytics', icon: BarChart3, roles: ['admin', 'hr'] },
   { href: '/assistant', label: 'Ask AI', icon: Laptop, roles: ['employee', 'manager'] },

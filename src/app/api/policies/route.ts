@@ -1,37 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase-server";
-import { isSupabaseConfigured } from "@/lib/supabase";
+import { isDatabaseConfigured } from "@/lib/env";
 import { requireAuth } from "@/lib/services/auth";
-import { createPolicy, updatePolicy, deletePolicy, getPolicyById } from "@/lib/services/policies";
+import { createPolicy, updatePolicy, deletePolicy, getPolicyById, getCompanyPolicies, searchPolicies } from "@/lib/services/policies";
 import { createPolicySchema, updatePolicySchema, validate } from "@/lib/validation";
 import { indexPolicy } from "@/lib/services/rag";
 
 export async function GET(request: NextRequest) {
   try {
-    if (!isSupabaseConfigured) {
+    if (!isDatabaseConfigured()) {
       return NextResponse.json([]);
     }
 
-    const user = await requireAuth();
-    const supabase = await createServerClient();
-    if (!supabase) return NextResponse.json([]);
-
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
+    const q = searchParams.get("q");
 
     if (id) {
       const policy = await getPolicyById(id);
       return NextResponse.json(policy);
     }
 
-    const { data, error } = await supabase
-      .from("company_policies")
-      .select("id, title, category, created_at")
-      .eq("company_id", user.company_id)
-      .order("title", { ascending: true });
+    if (q) {
+      const results = await searchPolicies(q);
+      return NextResponse.json(results || []);
+    }
 
-    if (error) throw error;
-    return NextResponse.json(data || []);
+    const policies = await getCompanyPolicies();
+    return NextResponse.json(policies || []);
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Internal error";
     console.error("Policies GET error:", error);
@@ -41,8 +36,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    if (!isSupabaseConfigured) {
-      return NextResponse.json({ error: "Supabase not configured" }, { status: 400 });
+    if (!isDatabaseConfigured()) {
+      return NextResponse.json({ error: "Database not configured" }, { status: 400 });
     }
 
     const user = await requireAuth();
@@ -71,8 +66,8 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    if (!isSupabaseConfigured) {
-      return NextResponse.json({ error: "Supabase not configured" }, { status: 400 });
+    if (!isDatabaseConfigured()) {
+      return NextResponse.json({ error: "Database not configured" }, { status: 400 });
     }
 
     const user = await requireAuth();
@@ -108,8 +103,8 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    if (!isSupabaseConfigured) {
-      return NextResponse.json({ error: "Supabase not configured" }, { status: 400 });
+    if (!isDatabaseConfigured()) {
+      return NextResponse.json({ error: "Database not configured" }, { status: 400 });
     }
 
     const user = await requireAuth();

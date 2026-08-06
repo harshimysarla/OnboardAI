@@ -1,23 +1,41 @@
 const requiredServerVars = [
-  "NEXT_PUBLIC_SUPABASE_URL",
-  "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-  "SUPABASE_SERVICE_ROLE_KEY",
+  "MONGODB_URI",
+  "JWT_SECRET",
+  "JWT_REFRESH_SECRET",
   "GEMINI_API_KEY",
 ] as const;
 
+// Direct static access so Turbopack/Webpack can replace NEXT_PUBLIC_* at build time
+const ENV: Record<string, string | undefined> = {
+  MONGODB_URI: process.env.MONGODB_URI,
+  JWT_SECRET: process.env.JWT_SECRET,
+  JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET,
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+  CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
+  CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
+  CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET,
+  NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME,
+  NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+  NEXT_PUBLIC_ALLOW_REGISTRATION: process.env.NEXT_PUBLIC_ALLOW_REGISTRATION,
+};
+
 function getEnv(name: string): string {
-  const value = process.env[name];
+  const value = ENV[name];
   if (!value) return "";
   return value.trim();
 }
 
 export interface EnvVars {
-  supabaseUrl: string;
-  supabaseAnonKey: string;
-  serviceRoleKey: string;
+  mongodbUri: string;
+  jwtSecret: string;
+  jwtRefreshSecret: string;
   geminiApiKey: string;
+  cloudinaryCloudName: string;
+  cloudinaryApiKey: string;
+  cloudinaryApiSecret: string;
   appName: string;
   appUrl: string;
+  allowRegistration: boolean;
 }
 
 let cached: EnvVars | null = null;
@@ -25,12 +43,16 @@ let cached: EnvVars | null = null;
 export function getEnvVars(): EnvVars {
   if (cached) return cached;
   cached = {
-    supabaseUrl: getEnv("NEXT_PUBLIC_SUPABASE_URL"),
-    supabaseAnonKey: getEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
-    serviceRoleKey: getEnv("SUPABASE_SERVICE_ROLE_KEY"),
+    mongodbUri: getEnv("MONGODB_URI"),
+    jwtSecret: getEnv("JWT_SECRET"),
+    jwtRefreshSecret: getEnv("JWT_REFRESH_SECRET"),
     geminiApiKey: getEnv("GEMINI_API_KEY"),
+    cloudinaryCloudName: getEnv("CLOUDINARY_CLOUD_NAME"),
+    cloudinaryApiKey: getEnv("CLOUDINARY_API_KEY"),
+    cloudinaryApiSecret: getEnv("CLOUDINARY_API_SECRET"),
     appName: getEnv("NEXT_PUBLIC_APP_NAME") || "OnboardAI",
     appUrl: getEnv("NEXT_PUBLIC_APP_URL") || "http://localhost:3000",
+    allowRegistration: getEnv("NEXT_PUBLIC_ALLOW_REGISTRATION") === "true",
   };
   return cached;
 }
@@ -38,22 +60,10 @@ export function getEnvVars(): EnvVars {
 export function validateEnv(): { valid: boolean; missing: string[] } {
   const vars = getEnvVars();
   const missing: string[] = [];
-  const map: Record<string, keyof EnvVars> = {
-    NEXT_PUBLIC_SUPABASE_URL: "supabaseUrl",
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: "supabaseAnonKey",
-    SUPABASE_SERVICE_ROLE_KEY: "serviceRoleKey",
-    GEMINI_API_KEY: "geminiApiKey",
-  };
   for (const name of requiredServerVars) {
-    if (!vars[map[name]]) {
+    if (!vars[name.replace(/^NEXT_PUBLIC_/, "").toLowerCase() as keyof EnvVars]) {
       missing.push(name);
     }
-  }
-  if (vars.supabaseUrl && vars.supabaseUrl.includes("/rest/v1")) {
-    missing.push("NEXT_PUBLIC_SUPABASE_URL must be the base project URL only (no /rest/v1)");
-  }
-  if (vars.serviceRoleKey && !vars.serviceRoleKey.startsWith("eyJ")) {
-    missing.push("SUPABASE_SERVICE_ROLE_KEY should be a service role JWT (starts with 'eyJ'), not a URL or other value");
   }
   return { valid: missing.length === 0, missing };
 }
@@ -62,26 +72,21 @@ export function isFullyConfigured(): boolean {
   return validateEnv().valid;
 }
 
-export function isSupabaseConfigured(): boolean {
+export function isDatabaseConfigured(): boolean {
   const vars = getEnvVars();
-  return !!(vars.supabaseUrl && vars.supabaseAnonKey);
+  return !!vars.mongodbUri;
+}
+
+export function isCloudinaryConfigured(): boolean {
+  const vars = getEnvVars();
+  return !!(vars.cloudinaryCloudName && vars.cloudinaryApiKey && vars.cloudinaryApiSecret);
 }
 
 export function getPublicConfig() {
   const vars = getEnvVars();
   return {
-    supabaseUrl: vars.supabaseUrl,
-    supabaseAnonKey: vars.supabaseAnonKey,
     appName: vars.appName,
     appUrl: vars.appUrl,
+    allowRegistration: vars.allowRegistration,
   };
-}
-
-// Startup validation — runs once on module import
-if (typeof process !== "undefined" && process.env) {
-  const { valid, missing } = validateEnv();
-  if (!valid) {
-    console.warn("[env] Configuration issues detected:");
-    missing.forEach(m => console.warn("  ⚠ " + m));
-  }
 }

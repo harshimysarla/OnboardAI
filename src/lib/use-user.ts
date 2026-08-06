@@ -10,6 +10,8 @@ export interface AppUser {
   company_id: string;
   company_name: string;
   employee_id?: string;
+  must_change_password?: boolean;
+  profile_completed?: boolean;
 }
 
 export function useUser() {
@@ -36,6 +38,8 @@ export function useUser() {
             company_id: data.user.company_id,
             company_name: data.user.company_name,
             employee_id: data.user.employee_id,
+            must_change_password: data.user.must_change_password,
+            profile_completed: data.user.profile_completed,
           });
         }
       } catch {

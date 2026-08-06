@@ -68,12 +68,16 @@ export default function AssistantPage() {
       const data = await res.json();
 
       const sources = (data.sources || []) as AssistantMessage["sources"];
+      const details = data.intentDetails as AssistantMessage["intent_details"];
+      const intentCode: RequestIntent | undefined = details
+        ? ({ IT: "IT_ACCESS_REQUEST", HR: "HR_REQUEST", Access: "IT_ACCESS_REQUEST", Equipment: "EQUIPMENT_REQUEST", Documentation: "DOCUMENTATION_REQUEST" } as Record<RequestCategory, RequestIntent>)[details.category] || "OTHER"
+        : undefined;
       const assistantMessage: AssistantMessage = {
         id: "msg-" + Date.now() + "-ai",
         role: "assistant",
         content: data.response,
-        intent: data.intent,
-        intent_details: data.intentDetails,
+        intent: intentCode,
+        intent_details: details,
         sources,
         created_at: new Date().toISOString(),
       };
@@ -180,10 +184,10 @@ export default function AssistantPage() {
                         ))}
                       </div>
                     )}
-                    {msg.intent && (
+                    {msg.intent_details && (
                       <div className="mt-2 flex items-center gap-2">
                         <Badge variant="warning">Action needed</Badge>
-                        <span className="text-xs opacity-70">{msg.intent}</span>
+                        <span className="text-xs opacity-70">{msg.intent_details.type}</span>
                       </div>
                     )}
                     <p className="mt-1 text-xs opacity-50">{new Date(msg.created_at).toLocaleTimeString()}</p>

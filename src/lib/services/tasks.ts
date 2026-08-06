@@ -1,43 +1,51 @@
-import { createServerClient } from "@/lib/supabase-server";
-import { isSupabaseConfigured } from "@/lib/supabase";
+import { connectDB } from "@/lib/db";
+import { EmployeeTask, ActivityLog } from "@/lib/models";
 import { requireAuth } from "./auth";
 import { updateEmployeeProgress } from "./employees";
+import { serializeMany } from "@/lib/serialize";
+import { rewardTaskComplete } from "./gamification";
 
 export async function getEmployeeTasks(employeeId: string) {
-  if (!isSupabaseConfigured) return null;
+  const conn = await connectDB();
+  if (!conn) return null;
   const user = await requireAuth();
-  const supabase = await createServerClient();
-  if (!supabase) return null;
 
-  const { data, error } = await supabase
-    .from("employee_tasks")
-    .select("*")
-    .eq("employee_id", employeeId)
-    .eq("company_id", user.company_id)
-    .order("sort_order", { ascending: true });
+  const tasks = await EmployeeTask.find({
+    employee_id: employeeId,
+    company_id: user.company_id,
+  })
+    .sort({ sort_order: 1 })
+    .lean();
 
-  if (error) throw error;
-  return data;
+  return serializeMany(tasks);
 }
 
 export async function completeTask(employeeId: string, taskId: string, companyId: string) {
-  const supabase = await createServerClient();
-  if (!supabase) throw new Error("Database not configured");
+  const conn = await connectDB();
+  if (!conn) throw new Error("Database not configured");
 
-  const { error } = await supabase
-    .from("employee_tasks")
-    .update({ completed: true, completed_at: new Date().toISOString() })
-    .eq("id", taskId)
-    .eq("employee_id", employeeId);
+  const existing = await EmployeeTask.findOne({ _id: taskId, employee_id: employeeId }).lean();
+  if (!existing) throw new Error("Task not found");
+  const alreadyCompleted = !!existing.completed;
 
-  if (error) throw error;
+  const task = await EmployeeTask.findOneAndUpdate(
+    { _id: taskId, employee_id: employeeId },
+    { completed: true, completed_at: new Date() },
+    { new: true }
+  ).lean();
+
+  if (!task) throw new Error("Task not found");
 
   await updateEmployeeProgress(employeeId, companyId);
 
-  await supabase.from("activity_logs").insert({
+  await ActivityLog.create({
     company_id: companyId,
     employee_id: employeeId,
     action: "Task completed",
-    details: `Task ${taskId} marked complete`,
+    details: `Task "${task.title}" marked complete`,
   });
+
+  if (!alreadyCompleted) {
+    await rewardTaskComplete(companyId, employeeId);
+  }
 }

@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isSupabaseConfigured } from "@/lib/supabase";
+import { isDatabaseConfigured } from "@/lib/env";
 import { requireAuth } from "@/lib/services/auth";
 import { getSupportRequests, createSupportRequest, updateRequestStatus } from "@/lib/services/requests";
 import { createRequestSchema, updateRequestSchema, validate } from "@/lib/validation";
 
 export async function GET() {
   try {
-    if (!isSupabaseConfigured) {
-      return NextResponse.json({ error: "Supabase not configured" }, { status: 400 });
+    if (!isDatabaseConfigured()) {
+      return NextResponse.json({ error: "Database not configured" }, { status: 400 });
     }
     await requireAuth();
     const requests = await getSupportRequests();
@@ -24,8 +24,8 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    if (!isSupabaseConfigured) {
-      return NextResponse.json({ error: "Supabase not configured" }, { status: 400 });
+    if (!isDatabaseConfigured()) {
+      return NextResponse.json({ error: "Database not configured" }, { status: 400 });
     }
 
     const body = await request.json();
@@ -55,8 +55,8 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    if (!isSupabaseConfigured) {
-      return NextResponse.json({ error: "Supabase not configured" }, { status: 400 });
+    if (!isDatabaseConfigured()) {
+      return NextResponse.json({ error: "Database not configured" }, { status: 400 });
     }
 
     await requireAuth();
