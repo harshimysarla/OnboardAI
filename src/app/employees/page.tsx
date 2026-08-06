@@ -44,6 +44,7 @@ export default function EmployeesPage() {
   const [accessCode, setAccessCode] = useState("");
   const [invitations, setInvitations] = useState<InvitationRecord[]>([]);
   const [inviteModal, setInviteModal] = useState<{ email: string; tempPassword: string } | null>(null);
+  const [addError, setAddError] = useState("");
   const [copied, setCopied] = useState("");
 
   useEffect(() => {
@@ -84,12 +85,17 @@ export default function EmployeesPage() {
 
   const handleAdd = async () => {
     if (!newEmp.full_name || !newEmp.email || !newEmp.joining_date) return;
+    setAddError("");
     const res = await fetch("/api/employees", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(newEmp),
     });
-    const created = await res.json();
+    const created = await res.json().catch(() => null);
+    if (!res.ok || !created) {
+      setAddError(typeof created?.error === "string" ? created.error : "Failed to create employee. Please try again.");
+      return;
+    }
     setEmployees(prev => [...prev, created]);
     setShowAdd(false);
     const tp = created.temporary_password as string | undefined;
@@ -294,6 +300,7 @@ export default function EmployeesPage() {
               <Input label="Manager" value={newEmp.manager} onChange={e => setNewEmp({...newEmp, manager: e.target.value})} />
               <Input label="Joining Date" type="date" value={newEmp.joining_date} onChange={e => setNewEmp({...newEmp, joining_date: e.target.value})} />
             </div>
+            {addError && <p className="text-sm font-medium text-red-600">{addError}</p>}
             <div className="mt-6 flex justify-end gap-3">
               <Button variant="outline" onClick={() => setShowAdd(false)}>Cancel</Button>
               <Button onClick={handleAdd}>Create Employee</Button>

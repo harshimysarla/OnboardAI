@@ -140,21 +140,22 @@ export async function createEmployee(params: {
   }
 
   let deptId: string | null = null;
+  let dept: Record<string, unknown> | null = null;
   if (params.department_id) {
     const raw = params.department_id;
-    let dept = Types.ObjectId.isValid(raw)
+    dept = (Types.ObjectId.isValid(raw)
       ? await Department.findById(raw).lean()
-      : null;
+      : null) as Record<string, unknown> | null;
     if (!dept && !Types.ObjectId.isValid(raw)) {
-      dept = await Department.findOne({
+      dept = (await Department.findOne({
         company_id: params.company_id,
         name: raw,
-      }).lean();
+      }).lean()) as Record<string, unknown> | null;
     }
     if (!dept) {
       dept = (
         await Department.create({ company_id: params.company_id, name: raw })
-      ).toObject();
+      ).toObject() as Record<string, unknown>;
     }
     deptId = dept ? toId(dept._id) : null;
   }
@@ -174,8 +175,13 @@ export async function createEmployee(params: {
 
   const empId = toId(employee._id);
 
-  const templateData = await getOnboardingTemplate(params.company_id);
-  const templateTasks = templateData?.tasks || [];
+  let templateTasks: Record<string, unknown>[] = [];
+  try {
+    const templateData = await getOnboardingTemplate(params.company_id);
+    templateTasks = templateData?.tasks || [];
+  } catch (templateError) {
+    console.error("Failed to load onboarding template:", templateError);
+  }
 
   if (templateTasks.length > 0) {
     const employeeTasks = templateTasks.map((t: Record<string, unknown>) => {
@@ -202,16 +208,20 @@ export async function createEmployee(params: {
     }
   }
 
-  await ActivityLog.create({
-    company_id: params.company_id,
-    employee_id: empId,
-    action: "Employee created",
-    details: `${params.full_name} was added as ${params.job_title}`,
-  });
+  try {
+    await ActivityLog.create({
+      company_id: params.company_id,
+      employee_id: empId,
+      action: "Employee created",
+      details: `${params.full_name} was added as ${params.job_title}`,
+    });
+  } catch (logError) {
+    console.error("Failed to record activity log:", logError);
+  }
 
   return serializeDoc({
     ...employee.toObject(),
-    department: deptId ? (await Department.findById(deptId).lean())?.name || "" : "",
+    department: dept ? (dept.name as string) || "" : "",
     department_id: deptId || "",
     temporary_password: tempPassword || undefined,
   });
