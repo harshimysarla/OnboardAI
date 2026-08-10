@@ -4,6 +4,10 @@ export function cn(...classes: (string | boolean | undefined | null)[]): string 
   return classes.filter(Boolean).join(" ");
 }
 
+export function isStaffRole(role?: string | null): boolean {
+  return role === "admin" || role === "hr";
+}
+
 export function getRiskColor(level: RiskLevel): string {
   switch (level) {
     case "green": return "bg-emerald-100 text-emerald-800 border-emerald-200";

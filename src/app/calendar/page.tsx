@@ -10,6 +10,7 @@ import { LoadingSpinner } from "@/components/ui/loading";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useUser } from "@/lib/use-user";
+import { isStaffRole } from "@/lib/utils";
 import { CalendarDays, ChevronLeft, ChevronRight, Plus, Trash2, Cake, Gift, X } from "lucide-react";
 
 interface CalEvent {
@@ -50,7 +51,7 @@ export default function CalendarPage() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ title: "", type: "event", date: "", time: "", location: "", notes: "", recurring: false });
 
-  const isStaff = user?.role === "admin" || user?.role === "hr";
+  const isStaff = isStaffRole(user?.role);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/calendar?month=${ym}`);

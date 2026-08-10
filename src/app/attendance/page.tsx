@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { LoadingSpinner } from "@/components/ui/loading";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime, isStaffRole } from "@/lib/utils";
 import { LogIn, LogOut, Play, Pause, CalendarDays, Timer, AlertTriangle } from "lucide-react";
 import { useUser } from "@/lib/use-user";
 
@@ -55,7 +55,7 @@ export default function AttendancePage() {
   const [employees, setEmployees] = useState<{ id: string; full_name: string }[]>([]);
   const [empFilter, setEmpFilter] = useState("");
 
-  const isAdmin = user?.role === "admin" || user?.role === "hr";
+  const isAdmin = isStaffRole(user?.role);
 
   const load = useCallback(async () => {
     const qs = month ? `?month=${month}` : "";

@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { LoadingSpinner } from "@/components/ui/loading";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { EmptyState } from "@/components/ui/empty-state";
-import { getStatusColor, getPriorityColor, formatDate } from "@/lib/utils";
+import { getStatusColor, getPriorityColor, formatDate, isStaffRole } from "@/lib/utils";
 import { SupportRequest } from "@/types";
 import { HelpCircle } from "lucide-react";
 import { useUser } from "@/lib/use-user";
@@ -46,7 +46,7 @@ export default function RequestsPage() {
 
   if (loading) return <AppLayout><LoadingSpinner size="lg" /></AppLayout>;
 
-  const isAdmin = user?.role === "admin" || user?.role === "hr";
+  const isAdmin = isStaffRole(user?.role);
   const filtered = isAdmin ? requests : requests.filter(r => r.employee_id === user?.employee_id);
 
   const statusFiltered = filtered.filter(r => {

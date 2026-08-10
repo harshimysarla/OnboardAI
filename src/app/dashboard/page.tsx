@@ -10,7 +10,7 @@ import { LoadingSpinner } from "@/components/ui/loading";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
-import { getRiskColor, getRiskDot, getStatusColor, formatDate } from "@/lib/utils";
+import { getRiskColor, getRiskDot, getStatusColor, formatDate, isStaffRole } from "@/lib/utils";
 import { calculateRiskAssessment } from "@/lib/risk-engine";
 import { Employee, SupportRequest, EmployeeTask, RiskAssessment } from "@/types";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, PieLabelRenderProps } from "recharts";
@@ -128,7 +128,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!user) return;
-    if (user.role === "admin" || user.role === "hr") {
+    if (isStaffRole(user.role)) {
       loadAdminData(); // eslint-disable-line react-hooks/set-state-in-effect
     } else {
       loadEmployeeData();
@@ -137,7 +137,7 @@ export default function DashboardPage() {
 
   if (!user || loading) return <AppLayout><LoadingSpinner size="lg" /></AppLayout>;
 
-  const isAdmin = user.role === "admin" || user.role === "hr";
+  const isAdmin = isStaffRole(user.role);
   const riskDistribution = stats && employees.length > 0 ? [
     { level: "On Track", count: stats.onTrack },
     { level: "Needs Attention", count: stats.needsAttention },

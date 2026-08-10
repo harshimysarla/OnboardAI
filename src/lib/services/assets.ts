@@ -1,6 +1,7 @@
 import { connectDB } from "@/lib/db";
 import { Asset, Employee } from "@/lib/models";
 import { serializeDoc } from "@/lib/serialize";
+import { isStaffRole } from "@/lib/utils";
 import { Types } from "mongoose";
 import type { AuthenticatedUser } from "@/lib/services/auth";
 
@@ -10,7 +11,7 @@ export async function listAssets(user: AssetUser) {
   const conn = await connectDB();
   if (!conn) return null;
 
-  if (user.role === "admin" || user.role === "hr") {
+  if (isStaffRole(user.role)) {
     const assets = await Asset.find({ company_id: user.company_id }).sort({ created_at: -1 }).lean();
     const empIds = [...new Set(assets.map((a) => a.assigned_to?.toString()).filter(Boolean))];
     const employees = empIds.length

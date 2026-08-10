@@ -1,6 +1,7 @@
 import { connectDB } from "@/lib/db";
 import { TrainingCourse, TrainingAssignment, Employee } from "@/lib/models";
 import { serializeDoc } from "@/lib/serialize";
+import { isStaffRole } from "@/lib/utils";
 import { Types } from "mongoose";
 import type { AuthenticatedUser } from "@/lib/services/auth";
 import { rewardQuizPass, rewardCourseComplete } from "./gamification";
@@ -28,7 +29,7 @@ export async function listTraining(user: TrainingUser, scope?: string) {
 
   const courses = await TrainingCourse.find({ company_id: user.company_id }).sort({ created_at: -1 }).lean();
 
-  if (user.role === "admin" || user.role === "hr") {
+  if (isStaffRole(user.role)) {
     const courseIds = courses.map((c) => c._id);
     const assignments = await TrainingAssignment.find({
       company_id: user.company_id,

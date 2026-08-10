@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/layout/app-layout";
@@ -10,7 +10,7 @@ import { LoadingSpinner } from "@/components/ui/loading";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
-import { getRiskColor, getRiskDot, formatDate } from "@/lib/utils";
+import { getRiskColor, getRiskDot, formatDate, isStaffRole } from "@/lib/utils";
 import { Plus, Users, Copy, Check, History } from "lucide-react";
 import Link from "next/link";
 import { useUser } from "@/lib/use-user";
@@ -140,7 +140,7 @@ export default function EmployeesPage() {
           <p className="mt-1 text-sm text-gray-500">Manage and view employee onboarding</p>
         </div>
         <div className="flex gap-2">
-          {(user?.role === "admin" || user?.role === "hr") && (
+          {isStaffRole(user?.role) && (
             <>
               <Button variant="outline" size="sm" onClick={handleOpenHistory}>
                 <History className="mr-1.5 h-4 w-4" />History
@@ -246,7 +246,7 @@ export default function EmployeesPage() {
           icon={<Users className="h-12 w-12" />}
           title="No employees yet"
           description="Add your first employee to get started."
-          action={user?.role === "admin" || user?.role === "hr" ? <Button onClick={() => setShowAdd(true)}><Plus className="mr-2 h-4 w-4" />Add Employee</Button> : undefined}
+          action={isStaffRole(user?.role) ? <Button onClick={() => setShowAdd(true)}><Plus className="mr-2 h-4 w-4" />Add Employee</Button> : undefined}
         />
       ) : (
         <>

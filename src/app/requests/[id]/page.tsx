@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select } from "@/components/ui/select";
 import { LoadingSpinner } from "@/components/ui/loading";
 import { EmptyState } from "@/components/ui/empty-state";
-import { getStatusColor, getPriorityColor, formatDate } from "@/lib/utils";
+import { getStatusColor, getPriorityColor, formatDate, isStaffRole } from "@/lib/utils";
 import { SupportRequest } from "@/types";
 import { ArrowLeft, HelpCircle, Calendar, User, Building2, AlertTriangle } from "lucide-react";
 import { useUser } from "@/lib/use-user";
@@ -76,7 +76,7 @@ export default function RequestDetailPage() {
 
   if (loading) return <AppLayout><LoadingSpinner size="lg" /></AppLayout>;
 
-  const isAdmin = user?.role === "admin" || user?.role === "hr";
+  const isAdmin = isStaffRole(user?.role);
 
   return (
     <AppLayout>

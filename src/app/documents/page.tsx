@@ -10,7 +10,7 @@ import { LoadingSpinner } from "@/components/ui/loading";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { VaultUploadModal } from "@/components/vault/upload-modal";
-import { formatDate } from "@/lib/utils";
+import { formatDate, isStaffRole } from "@/lib/utils";
 import { useUser } from "@/lib/use-user";
 import { ACCEPT_ATTRIBUTE, MAX_FILE_SIZE, MAX_FILE_SIZE_MESSAGE, UNSUPPORTED_TYPE_MESSAGE, formatFileSize, getFileExtension } from "@/lib/vault-upload";
 import { FolderOpen, Download, History, Trash2, X, FileText, UploadCloud, CheckCircle2, AlertCircle } from "lucide-react";
@@ -74,7 +74,7 @@ export default function VaultPage() {
   const [modalSeq, setModalSeq] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const isStaff = user?.role === "admin" || user?.role === "hr";
+  const isStaff = isStaffRole(user?.role);
 
   const showNotice = useCallback((msg: string, kind: "success" | "error" = "error") => {
     setNotice({ msg, kind });

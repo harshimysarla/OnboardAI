@@ -10,6 +10,7 @@ import { LoadingSpinner } from "@/components/ui/loading";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useUser } from "@/lib/use-user";
+import { isStaffRole } from "@/lib/utils";
 import { GraduationCap, Book, FileText, Link2, ListChecks, Trash2, Award, X } from "lucide-react";
 
 interface QuizQuestion {
@@ -95,7 +96,7 @@ export default function TrainingPage() {
   const [quizAnswers, setQuizAnswers] = useState<Record<string, number[]>>({});
 
   const role = user?.role || "employee";
-  const isStaff = role === "admin" || role === "hr";
+  const isStaff = isStaffRole(role);
   const isManager = role === "manager";
 
   const load = useCallback(async () => {

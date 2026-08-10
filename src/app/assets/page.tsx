@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { LoadingSpinner } from "@/components/ui/loading";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
-import { formatDate } from "@/lib/utils";
+import { formatDate, isStaffRole } from "@/lib/utils";
 import { useUser } from "@/lib/use-user";
 import { Laptop, Trash2 } from "lucide-react";
 
@@ -50,7 +50,7 @@ export default function AssetsPage() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: "", type: "laptop", serial_number: "", notes: "" });
 
-  const isStaff = user?.role === "admin" || user?.role === "hr";
+  const isStaff = isStaffRole(user?.role);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/assets");

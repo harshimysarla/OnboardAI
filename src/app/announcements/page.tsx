@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { LoadingSpinner } from "@/components/ui/loading";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime, isStaffRole } from "@/lib/utils";
 import { useUser } from "@/lib/use-user";
 import { Megaphone, ThumbsUp, Bookmark, MessageSquare, Pin, Trash2 } from "lucide-react";
 
@@ -56,7 +56,7 @@ export default function AnnouncementsPage() {
   const [form, setForm] = useState({ title: "", content: "", category: "general", pinned: false });
   const [commentText, setCommentText] = useState<Record<string, string>>({});
 
-  const isStaff = user?.role === "admin" || user?.role === "hr";
+  const isStaff = isStaffRole(user?.role);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/announcements");

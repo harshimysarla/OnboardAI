@@ -1,6 +1,7 @@
 import { connectDB } from "@/lib/db";
 import { Announcement, Notification, User } from "@/lib/models";
 import { serializeDoc } from "@/lib/serialize";
+import { isStaffRole } from "@/lib/utils";
 import { Types } from "mongoose";
 import type { AuthenticatedUser } from "@/lib/services/auth";
 
@@ -97,7 +98,7 @@ export async function updateAnnouncement(
   const doc = await Announcement.findOne({ _id: input.id, company_id: user.company_id });
   if (!doc) return { error: "Announcement not found" };
 
-  const isStaff = user.role === "admin" || user.role === "hr";
+  const isStaff = isStaffRole(user.role);
   const isAuthor = doc.author_id?.toString() === user.id;
   if (!isStaff && !isAuthor) return { error: "You cannot edit this announcement" };
 
@@ -115,7 +116,7 @@ export async function deleteAnnouncement(user: AnnounceUser, id: string) {
   const doc = await Announcement.findOne({ _id: id, company_id: user.company_id });
   if (!doc) return { error: "Announcement not found" };
 
-  const isStaff = user.role === "admin" || user.role === "hr";
+  const isStaff = isStaffRole(user.role);
   const isAuthor = doc.author_id?.toString() === user.id;
   if (!isStaff && !isAuthor) return { error: "You cannot delete this announcement" };
 

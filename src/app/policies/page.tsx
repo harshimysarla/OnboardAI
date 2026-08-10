@@ -9,6 +9,7 @@ import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { LoadingSpinner } from "@/components/ui/loading";
 import { EmptyState } from "@/components/ui/empty-state";
+import { isStaffRole } from "@/lib/utils";
 import { FileText, Plus, Search } from "lucide-react";
 import { useUser } from "@/lib/use-user";
 
@@ -30,7 +31,7 @@ export default function PoliciesPage() {
   const [showEdit, setShowEdit] = useState(false);
   const [form, setForm] = useState({ title: "", category: "Other", content: "" });
 
-  const isAdmin = user?.role === "admin" || user?.role === "hr";
+  const isAdmin = isStaffRole(user?.role);
 
   useEffect(() => {
     fetch("/api/policies")

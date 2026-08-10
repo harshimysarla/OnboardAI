@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { LoadingSpinner } from "@/components/ui/loading";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
-import { formatDate } from "@/lib/utils";
+import { formatDate, isStaffRole } from "@/lib/utils";
 import { useUser } from "@/lib/use-user";
 import { CalendarDays, CalendarPlus, CheckCircle2, XCircle, Clock } from "lucide-react";
 
@@ -63,7 +63,7 @@ export default function LeavesPage() {
   const [message, setMessage] = useState("");
 
   const role = user?.role || "employee";
-  const isStaff = role === "admin" || role === "hr";
+  const isStaff = isStaffRole(role);
   const canManage = isStaff || role === "manager";
 
   const load = useCallback(async () => {
