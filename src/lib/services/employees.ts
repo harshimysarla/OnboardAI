@@ -49,7 +49,7 @@ export async function getMyProfile() {
   if (!conn) return null;
   const user = await requireAuth();
 
-  const emp = await Employee.findOne({ user_id: user.id }).lean();
+  const emp = await Employee.findOne({ user_id: user.id, company_id: user.company_id }).lean();
   if (!emp) return null;
   return withDepartment(emp as unknown as Record<string, unknown>);
 }

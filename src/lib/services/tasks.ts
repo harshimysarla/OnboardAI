@@ -24,12 +24,12 @@ export async function completeTask(employeeId: string, taskId: string, companyId
   const conn = await connectDB();
   if (!conn) throw new Error("Database not configured");
 
-  const existing = await EmployeeTask.findOne({ _id: taskId, employee_id: employeeId }).lean();
+  const existing = await EmployeeTask.findOne({ _id: taskId, employee_id: employeeId, company_id: companyId }).lean();
   if (!existing) throw new Error("Task not found");
   const alreadyCompleted = !!existing.completed;
 
   const task = await EmployeeTask.findOneAndUpdate(
-    { _id: taskId, employee_id: employeeId },
+    { _id: taskId, employee_id: employeeId, company_id: companyId },
     { completed: true, completed_at: new Date() },
     { new: true }
   ).lean();

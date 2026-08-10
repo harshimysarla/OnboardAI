@@ -61,15 +61,15 @@ interface EmployeeDbInfo {
   gamification?: { points: number; badgesEarned: number; level?: string };
 }
 
-async function fetchEmployeeDbInfo(employeeId: string): Promise<EmployeeDbInfo | null> {
+async function fetchEmployeeDbInfo(employeeId: string, companyId: string): Promise<EmployeeDbInfo | null> {
   const conn = await connectDB();
   if (!conn) return null;
 
-  const emp = await Employee.findById(employeeId).lean();
+  const emp = await Employee.findOne({ _id: employeeId, company_id: companyId }).lean();
   if (!emp) return null;
 
-  const tasks = await EmployeeTask.find({ employee_id: employeeId }).lean();
-  const requests = await SupportRequest.find({ employee_id: employeeId }).lean();
+  const tasks = await EmployeeTask.find({ employee_id: employeeId, company_id: companyId }).lean();
+  const requests = await SupportRequest.find({ employee_id: employeeId, company_id: companyId }).lean();
 
   const now = new Date().toISOString();
 
@@ -479,7 +479,7 @@ export async function chat(
 
   // ── Phase 6: Employee-specific questions (structured DB data) ──
   if (employeeId && isEmployeeQuery(lastMessage)) {
-    const empInfo = await fetchEmployeeDbInfo(employeeId);
+    const empInfo = await fetchEmployeeDbInfo(employeeId, companyId);
     if (empInfo) {
       const answer = buildEmployeeAnswer(empInfo, lastMessage);
       if (answer) {
@@ -492,7 +492,7 @@ export async function chat(
    // Gather employee context for the system prompt
    let employeeContext = "";
    if (employeeId) {
-     const empInfo = await fetchEmployeeDbInfo(employeeId);
+    const empInfo = await fetchEmployeeDbInfo(employeeId, companyId);
      if (empInfo) {
        employeeContext = [
          `Name: ${empInfo.full_name}`,
