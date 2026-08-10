@@ -165,7 +165,7 @@ export default function EmployeesPage() {
 
       {/* Invitation History Dialog */}
       {showHistory && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowHistory(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowHistory(false)} role="dialog" aria-modal="true" aria-label="Invitation History">
           <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h2 className="text-lg font-semibold text-gray-900">Invitation History</h2>
             <p className="mt-1 text-sm text-gray-500">Recent employee invitations and their status</p>
@@ -202,7 +202,7 @@ export default function EmployeesPage() {
 
       {/* Invitation credential modal */}
       {inviteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setInviteModal(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setInviteModal(null)} role="dialog" aria-modal="true" aria-label="Employee credentials">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" onClick={e => e.stopPropagation()}>
             <h2 className="text-lg font-semibold text-gray-900">Employee created</h2>
             <p className="mt-1 text-sm text-gray-500">Share these credentials with <strong>{inviteModal.email}</strong></p>
@@ -211,7 +211,7 @@ export default function EmployeesPage() {
                 <span className="text-xs text-gray-500">Access Code</span>
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-sm font-bold">{accessCode}</span>
-                  <Button variant="ghost" size="sm" onClick={() => handleCopy(accessCode, "code")}>
+                  <Button variant="ghost" size="sm" aria-label="Copy access code" onClick={() => handleCopy(accessCode, "code")}>
                     {copied === "code" ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
                   </Button>
                 </div>
@@ -220,7 +220,7 @@ export default function EmployeesPage() {
                 <span className="text-xs text-gray-500">Email</span>
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-sm">{inviteModal.email}</span>
-                  <Button variant="ghost" size="sm" onClick={() => handleCopy(inviteModal.email, "email")}>
+                  <Button variant="ghost" size="sm" aria-label="Copy email" onClick={() => handleCopy(inviteModal.email, "email")}>
                     {copied === "email" ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
                   </Button>
                 </div>
@@ -229,7 +229,7 @@ export default function EmployeesPage() {
                 <span className="text-xs text-gray-500">Temp Password</span>
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-sm select-all">{inviteModal.tempPassword}</span>
-                  <Button variant="ghost" size="sm" onClick={() => handleCopy(inviteModal.tempPassword, "pw")}>
+                  <Button variant="ghost" size="sm" aria-label="Copy temporary password" onClick={() => handleCopy(inviteModal.tempPassword, "pw")}>
                     {copied === "pw" ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
                   </Button>
                 </div>
@@ -316,7 +316,7 @@ export default function EmployeesPage() {
       )}
 
       {showAdd && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowAdd(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowAdd(false)} role="dialog" aria-modal="true" aria-label="Add Employee">
           <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl" onClick={e => e.stopPropagation()}>
             <h2 className="text-lg font-semibold text-gray-900">Add Employee</h2>
             <p className="mt-1 text-sm text-gray-500">An account will be created with a temporary password</p>
