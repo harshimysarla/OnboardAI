@@ -551,28 +551,43 @@ Guidelines:
         parts: [{ text: m.content }],
       }));
 
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [
-              { role: "user", parts: [{ text: systemPrompt }] },
-              ...history,
-              { role: "user", parts: [{ text: lastMessage }] },
-            ],
-            generationConfig: {
-              temperature: 0.2,
-              maxOutputTokens: 800,
-            },
-          }),
-        }
-      );
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 20000);
+      let response: Response;
+      try {
+        response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [
+                { role: "user", parts: [{ text: systemPrompt }] },
+                ...history,
+                { role: "user", parts: [{ text: lastMessage }] },
+              ],
+              generationConfig: {
+                temperature: 0.2,
+                maxOutputTokens: 800,
+              },
+            }),
+            signal: controller.signal,
+          }
+        );
+      } finally {
+        clearTimeout(timeout);
+      }
 
       if (!response.ok) throw new Error(`Gemini API error: ${response.status}`);
       const data = await response.json();
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
+      const finishReason = data.candidates?.[0]?.finishReason || "";
+
+      // Gemini can return an empty or safety-filtered response; degrade to the
+      // rule-based fallback instead of sending the user a blank reply.
+      if (!text || finishReason === "SAFETY") {
+        throw new Error("Gemini returned an empty or blocked response");
+      }
 
       return { response: text, intent, sources };
     } catch (error) {
