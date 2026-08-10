@@ -144,7 +144,9 @@ export default function RequestsPage() {
                         </TD>
                       )}
                       <TD>
-                        <p className="font-medium text-gray-900">{req.type}</p>
+                        <Link href={"/requests/" + req.id} className="font-medium text-indigo-600 hover:text-indigo-800">
+                          {req.type}
+                        </Link>
                         <p className="text-xs text-gray-500 truncate max-w-[200px]">{req.description}</p>
                       </TD>
                       <TD><Badge variant="info">{req.category}</Badge></TD>
@@ -173,7 +175,7 @@ export default function RequestsPage() {
                       <TD className="text-xs text-gray-500">{formatDate(req.created_at)}</TD>
                       {isAdmin && (
                         <TD>
-                          <Link href={"/employees/" + req.employee_id}>
+                          <Link href={"/requests/" + req.id}>
                             <Button variant="ghost" size="sm">View</Button>
                           </Link>
                         </TD>
