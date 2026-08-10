@@ -57,6 +57,9 @@ export async function POST(request: NextRequest) {
     if (msg === "Authentication required") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    if (msg === "Task not found") {
+      return NextResponse.json({ error: msg }, { status: 404 });
+    }
     console.error("Complete task error:", error);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }

@@ -23,6 +23,8 @@ export default function EmployeeDetailPage() {
   const [tasks, setTasks] = useState<EmployeeTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [unresolvedCount, setUnresolvedCount] = useState(0);
+  const [completingId, setCompletingId] = useState<string | null>(null);
+  const [taskError, setTaskError] = useState("");
 
   const employeeId = params.id as string;
 
@@ -53,12 +55,26 @@ export default function EmployeeDetailPage() {
   }, [employeeId]);
 
   const handleCompleteTask = async (taskId: string) => {
-    await fetch("/api/tasks", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ employee_id: employeeId, task_id: taskId }),
-    });
-    await loadData();
+    if (completingId) return;
+    setCompletingId(taskId);
+    setTaskError("");
+    try {
+      const res = await fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ employee_id: employeeId, task_id: taskId }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setTaskError(data?.error || "Failed to complete task. Please try again.");
+        return;
+      }
+      await loadData();
+    } catch {
+      setTaskError("Connection error. Please try again.");
+    } finally {
+      setCompletingId(null);
+    }
   };
 
   if (loading) return <AppLayout><LoadingSpinner size="lg" /></AppLayout>;
@@ -164,6 +180,7 @@ export default function EmployeeDetailPage() {
 
       <Card className="mt-6">
         <CardHeader><CardTitle>Onboarding Tasks ({totalTasks})</CardTitle></CardHeader>
+        {taskError && <p className="px-6 pb-2 text-sm text-red-600">{taskError}</p>}
         <CardContent className="p-0">
           <div className="divide-y">
             {[
@@ -196,7 +213,7 @@ export default function EmployeeDetailPage() {
                       </div>
                     </div>
                     {!task.completed && (
-                      <Button size="sm" variant="outline" onClick={() => handleCompleteTask(task.id)}>Mark Complete</Button>
+                      <Button size="sm" variant="outline" loading={completingId === task.id} disabled={!!completingId} onClick={() => handleCompleteTask(task.id)}>Mark Complete</Button>
                     )}
                   </div>
                 ))}
