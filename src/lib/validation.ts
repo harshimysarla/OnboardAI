@@ -1,8 +1,12 @@
 import { z } from "zod";
 import { NextResponse } from "next/server";
 
-export const emailSchema = z.string().email("Invalid email address").min(1, "Email is required");
+export const emailSchema = z.string().email("Invalid email address").min(1, "Email is required").max(254, "Email is too long");
 export const nonEmptyString = z.string().min(1, "This field is required");
+export const passwordSchema = z
+  .string()
+  .min(6, "Password must be at least 6 characters")
+  .max(72, "Password must be 72 characters or fewer");
 export const dateStringSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?)?$/, "Must be a valid date string");
 export const uuidSchema = z.string().uuid("Must be a valid UUID");
 
@@ -25,18 +29,18 @@ export const changeAccessCodeSchema = z.object({
 export const authSchema = z.object({
   company_code: accessCodeSchema,
   email: emailSchema,
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  password: passwordSchema,
 });
 
 export const registerSchema = z.object({
-  full_name: nonEmptyString,
+  full_name: z.string().trim().min(1, "Full name is required").max(120, "Full name must be 120 characters or fewer"),
   email: emailSchema,
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  company_name: nonEmptyString,
+  password: passwordSchema,
+  company_name: z.string().trim().min(1, "Company name is required").max(100, "Company name must be 100 characters or fewer"),
 });
 
 export const changePasswordSchema = z.object({
-  new_password: z.string().min(6, "Password must be at least 6 characters"),
+  new_password: passwordSchema,
 });
 
 export const updateProfileSchema = z.object({
