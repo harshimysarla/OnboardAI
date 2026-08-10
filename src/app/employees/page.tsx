@@ -45,21 +45,32 @@ export default function EmployeesPage() {
   const [invitations, setInvitations] = useState<InvitationRecord[]>([]);
   const [inviteModal, setInviteModal] = useState<{ email: string; tempPassword: string } | null>(null);
   const [addError, setAddError] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
+  const [loadError, setLoadError] = useState("");
   const [copied, setCopied] = useState("");
 
-  useEffect(() => {
-    Promise.all([
-      fetch("/api/employees").then(res => res.json()).catch(() => []),
-      fetch("/api/departments").then(res => res.json()).catch(() => []),
-      fetch("/api/company").then(res => res.json()).catch(() => null),
-    ]).then(([emps, depts, company]) => {
+  const loadData = async () => {
+    try {
+      const [emps, depts, company] = await Promise.all([
+        fetch("/api/employees").then(res => res.json()).catch(() => []),
+        fetch("/api/departments").then(res => res.json()).catch(() => []),
+        fetch("/api/company").then(res => res.json()).catch(() => null),
+      ]);
       setEmployees(Array.isArray(emps) ? emps : []);
       if (Array.isArray(depts)) {
         setDepartments(depts.map((d: { name: string }) => d.name).filter(Boolean));
       }
       if (company?.access_code) setAccessCode(company.access_code);
+      setLoadError("");
+    } catch {
+      setLoadError("Could not load employees. Please try again.");
+    } finally {
       setLoading(false);
-    });
+    }
+  };
+
+  useEffect(() => {
+    loadData(); // eslint-disable-line react-hooks/set-state-in-effect
   }, []);
 
   const handleOpenHistory = async () => {
@@ -104,6 +115,9 @@ export default function EmployeesPage() {
     const tp = created.temporary_password as string | undefined;
     if (tp) {
       setInviteModal({ email: newEmp.email, tempPassword: tp });
+    } else {
+      setSuccessMsg("Employee created successfully");
+      setTimeout(() => setSuccessMsg(""), 4000);
     }
     setNewEmp({ full_name: "", email: "", job_title: "", department: "", manager: "", joining_date: "" });
     fetch("/api/departments")
@@ -136,6 +150,18 @@ export default function EmployeesPage() {
           )}
         </div>
       </div>
+
+      {successMsg && (
+        <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          {successMsg}
+        </div>
+      )}
+      {loadError && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <span>{loadError}</span>
+          <Button size="sm" variant="outline" onClick={loadData}>Retry</Button>
+        </div>
+      )}
 
       {/* Invitation History Dialog */}
       {showHistory && (
