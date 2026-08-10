@@ -15,21 +15,33 @@ export async function generateEmbedding(text: string): Promise<number[]> {
     throw new Error("GEMINI_API_KEY is not configured. Cannot generate embeddings.");
   }
 
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${geminiApiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "models/gemini-embedding-001",
-        content: { parts: [{ text }] },
-      }),
-    }
-  );
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  let response: Response;
+  try {
+    response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${geminiApiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "models/gemini-embedding-001",
+          content: { parts: [{ text }] },
+        }),
+        signal: controller.signal,
+      }
+    );
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!response.ok) throw new Error(`Embedding API error: ${response.status}`);
   const data = await response.json();
-  return data.embedding?.values || new Array(768).fill(0);
+  const values: number[] | undefined = data.embedding?.values;
+  if (!Array.isArray(values) || values.length === 0) {
+    throw new Error("Embedding API returned no values");
+  }
+  return values;
 }
 
 export function splitIntoChunks(text: string, maxLength: number = 800): Chunk[] {
@@ -58,12 +70,14 @@ export async function indexPolicy(id: string) {
   const policy = await Policy.findById(id).lean();
   if (!policy) throw new Error("Policy not found");
 
-  await PolicyChunk.deleteMany({ policy_id: id });
-
   const chunks = splitIntoChunks(policy.content);
   const embeddings = await Promise.all(
     chunks.map((c) => generateEmbedding(c.content))
   );
+
+  // Only replace the previous chunks after the new embeddings succeeded, so a
+  // failed re-index does not leave the policy without any searchable content.
+  await PolicyChunk.deleteMany({ policy_id: id });
 
   const rows = chunks.map((chunk, i) => ({
     company_id: policy.company_id,
@@ -136,6 +150,9 @@ export async function queryCompanyKnowledge(
   let embedding: number[];
   try {
     embedding = await generateEmbedding(query);
+    if (embedding.every((v) => v === 0)) {
+      return await textSearchFallback(query, companyId, topK);
+    }
   } catch {
     return await textSearchFallback(query, companyId, topK);
   }
@@ -186,7 +203,9 @@ export async function queryCompanyKnowledge(
 }
 
 async function textSearchFallback(query: string, companyId: string, topK: number) {
-  const regex = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+  const regex = new RegExp(trimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
   const chunks = await PolicyChunk.find({ company_id: companyId, content: regex })
     .limit(topK)
     .lean();
