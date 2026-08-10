@@ -70,7 +70,10 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Unknown error";
-    if (msg === "Authentication required" || msg === "Insufficient permissions" || msg === "Only HR can update request status") {
+    if (msg === "Authentication required") {
+      return NextResponse.json({ error: msg }, { status: 401 });
+    }
+    if (msg === "Insufficient permissions" || msg === "Only HR can update request status") {
       return NextResponse.json({ error: msg }, { status: 403 });
     }
     console.error("Update request error:", error);

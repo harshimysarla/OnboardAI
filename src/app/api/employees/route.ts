@@ -62,8 +62,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(employee, { status: 201 });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Unknown error";
-    if (msg === "Authentication required" || msg === "Insufficient permissions") {
+    if (msg === "Authentication required") {
       return NextResponse.json({ error: msg }, { status: 401 });
+    }
+    if (msg === "Insufficient permissions") {
+      return NextResponse.json({ error: msg }, { status: 403 });
     }
     console.error("Create employee error:", error);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });

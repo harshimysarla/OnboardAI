@@ -34,8 +34,11 @@ export async function PATCH(request: Request) {
     return NextResponse.json(result);
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Unknown error";
-    if (msg === "Authentication required" || msg === "Insufficient permissions") {
+    if (msg === "Authentication required") {
       return NextResponse.json({ error: msg }, { status: 401 });
+    }
+    if (msg === "Insufficient permissions") {
+      return NextResponse.json({ error: msg }, { status: 403 });
     }
     if (msg === "Company not found") {
       return NextResponse.json({ error: msg }, { status: 404 });
