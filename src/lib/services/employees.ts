@@ -253,8 +253,12 @@ export async function listDepartments(companyId: string) {
 export async function createDepartment(companyId: string, name: string) {
   const conn = await connectDB();
   if (!conn) throw new Error("Database not configured");
-  const existing = await Department.findOne({ company_id: companyId, name });
-  if (existing) return serializeDoc(existing.toObject());
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const existing = await Department.findOne({
+    company_id: companyId,
+    name: { $regex: new RegExp(`^${escaped}$`, "i") },
+  }).lean();
+  if (existing) return serializeDoc(existing);
   const dept = await Department.create({ company_id: companyId, name });
   return serializeDoc(dept.toObject());
 }

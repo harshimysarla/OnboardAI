@@ -131,7 +131,7 @@ export const updateCompanySchema = z.object({
 });
 
 export const createDepartmentSchema = z.object({
-  name: nonEmptyString,
+  name: z.string().trim().min(1, "Department name is required").max(100, "Department name must be 100 characters or fewer"),
 });
 
 // ─── Onboarding ─────────────────────────────────────────────────────
