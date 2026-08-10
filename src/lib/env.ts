@@ -58,10 +58,9 @@ export function getEnvVars(): EnvVars {
 }
 
 export function validateEnv(): { valid: boolean; missing: string[] } {
-  const vars = getEnvVars();
   const missing: string[] = [];
   for (const name of requiredServerVars) {
-    if (!vars[name.replace(/^NEXT_PUBLIC_/, "").toLowerCase() as keyof EnvVars]) {
+    if (!getEnv(name)) {
       missing.push(name);
     }
   }
