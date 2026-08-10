@@ -10,6 +10,13 @@ import {
   applyLeaveSchema,
   decideLeaveSchema,
   validate,
+  registerSchema,
+  changePasswordSchema,
+  createDepartmentSchema,
+  updateRequestSchema,
+  emailSchema,
+  passwordSchema,
+  dateStringSchema,
 } from "@/lib/validation";
 
 describe("authSchema", () => {
@@ -249,5 +256,184 @@ describe("validate helper", () => {
     const result = validate(authSchema, { email: "bad", password: "12" });
     expect(result.error).toBeDefined();
     expect(result.data).toBeUndefined();
+  });
+});
+
+describe("emailSchema", () => {
+  it("accepts an email at the 254-character limit", () => {
+    const local = "a".repeat(64);
+    const domain = "b".repeat(185) + ".com";
+    expect(emailSchema.safeParse(`${local}@${domain}`).success).toBe(true);
+  });
+
+  it("rejects an email longer than 254 characters", () => {
+    const local = "a".repeat(64);
+    const domain = "b".repeat(190) + ".com";
+    expect(emailSchema.safeParse(`${local}@${domain}`).success).toBe(false);
+  });
+});
+
+describe("passwordSchema", () => {
+  it("accepts a 6-character password", () => {
+    expect(passwordSchema.safeParse("123456").success).toBe(true);
+  });
+
+  it("accepts a 72-character password (bcrypt limit)", () => {
+    expect(passwordSchema.safeParse("a".repeat(72)).success).toBe(true);
+  });
+
+  it("rejects a 73-character password (bcrypt truncation risk)", () => {
+    expect(passwordSchema.safeParse("a".repeat(73)).success).toBe(false);
+  });
+
+  it("rejects a 5-character password", () => {
+    expect(passwordSchema.safeParse("12345").success).toBe(false);
+  });
+});
+
+describe("registerSchema", () => {
+  it("accepts valid registration data", () => {
+    const result = registerSchema.safeParse({
+      full_name: "Jane Doe",
+      email: "jane@example.com",
+      password: "password123",
+      company_name: "Acme Corp",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("trims whitespace from names", () => {
+    const result = registerSchema.safeParse({
+      full_name: "  Jane Doe  ",
+      email: "jane@example.com",
+      password: "password123",
+      company_name: "  Acme Corp  ",
+    });
+    if (result.success) {
+      expect(result.data.full_name).toBe("Jane Doe");
+      expect(result.data.company_name).toBe("Acme Corp");
+    }
+  });
+
+  it("rejects a full name over 120 characters", () => {
+    const result = registerSchema.safeParse({
+      full_name: "a".repeat(121),
+      email: "jane@example.com",
+      password: "password123",
+      company_name: "Acme Corp",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a company name over 100 characters", () => {
+    const result = registerSchema.safeParse({
+      full_name: "Jane Doe",
+      email: "jane@example.com",
+      password: "password123",
+      company_name: "b".repeat(101),
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a password over 72 characters", () => {
+    const result = registerSchema.safeParse({
+      full_name: "Jane Doe",
+      email: "jane@example.com",
+      password: "c".repeat(73),
+      company_name: "Acme Corp",
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("changePasswordSchema", () => {
+  it("accepts a valid new password", () => {
+    expect(changePasswordSchema.safeParse({ new_password: "newpassword123" }).success).toBe(true);
+  });
+
+  it("rejects a short new password", () => {
+    expect(changePasswordSchema.safeParse({ new_password: "short" }).success).toBe(false);
+  });
+
+  it("rejects a new password over 72 characters", () => {
+    expect(changePasswordSchema.safeParse({ new_password: "d".repeat(73) }).success).toBe(false);
+  });
+});
+
+describe("createDepartmentSchema", () => {
+  it("accepts a valid department name", () => {
+    const result = createDepartmentSchema.safeParse({ name: "Engineering" });
+    expect(result.success).toBe(true);
+  });
+
+  it("trims whitespace from the department name", () => {
+    const result = createDepartmentSchema.safeParse({ name: "  Engineering  " });
+    if (result.success) {
+      expect(result.data.name).toBe("Engineering");
+    }
+  });
+
+  it("rejects a name over 100 characters", () => {
+    expect(createDepartmentSchema.safeParse({ name: "e".repeat(101) }).success).toBe(false);
+  });
+
+  it("rejects an empty name", () => {
+    expect(createDepartmentSchema.safeParse({ name: "   " }).success).toBe(false);
+  });
+});
+
+describe("createEmployeeSchema", () => {
+  it("rejects an invalid joining date format", () => {
+    const result = createEmployeeSchema.safeParse({
+      full_name: "Jane Doe",
+      email: "jane@example.com",
+      joining_date: "not-a-date",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts a valid ISO joining date", () => {
+    const result = createEmployeeSchema.safeParse({
+      full_name: "Jane Doe",
+      email: "jane@example.com",
+      joining_date: "2024-03-15",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a full name over 120 characters", () => {
+    const result = createEmployeeSchema.safeParse({
+      full_name: "f".repeat(121),
+      email: "jane@example.com",
+      joining_date: "2024-03-15",
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("dateStringSchema", () => {
+  it("accepts date-only and full datetime strings", () => {
+    expect(dateStringSchema.safeParse("2024-03-15").success).toBe(true);
+    expect(dateStringSchema.safeParse("2024-03-15T10:30:00Z").success).toBe(true);
+    expect(dateStringSchema.safeParse("2024-03-15T10:30:00.000+05:30").success).toBe(true);
+  });
+
+  it("rejects arbitrary strings", () => {
+    expect(dateStringSchema.safeParse("15/03/2024").success).toBe(false);
+    expect(dateStringSchema.safeParse("hello").success).toBe(false);
+  });
+});
+
+describe("updateRequestSchema", () => {
+  it("accepts a valid status update", () => {
+    expect(updateRequestSchema.safeParse({ id: "req-1", status: "In Progress" }).success).toBe(true);
+  });
+
+  it("rejects an unknown status", () => {
+    expect(updateRequestSchema.safeParse({ id: "req-1", status: "Closed" }).success).toBe(false);
+  });
+
+  it("rejects a missing id", () => {
+    expect(updateRequestSchema.safeParse({ status: "Open" }).success).toBe(false);
   });
 });
