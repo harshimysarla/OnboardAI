@@ -74,34 +74,42 @@ export default function DashboardPage() {
   const [riskAssessments, setRiskAssessments] = useState<RiskAssessment[]>([]);
   const [dash, setDash] = useState<DashData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [completingId, setCompletingId] = useState<string | null>(null);
 
   const loadAdminData = async () => {
-    const [empsRes, reqsRes] = await Promise.all([
-      fetch("/api/employees"),
-      fetch("/api/requests"),
-    ]);
-    const emps: Employee[] = await empsRes.json();
-    const reqs: SupportRequest[] = await reqsRes.json();
-    const employeesList = Array.isArray(emps) ? emps : [];
-    const requestsList = Array.isArray(reqs) ? reqs : [];
+    try {
+      const [empsRes, reqsRes] = await Promise.all([
+        fetch("/api/employees"),
+        fetch("/api/requests"),
+      ]);
+      if (!empsRes.ok || !reqsRes.ok) throw new Error("Request failed");
+      const emps: Employee[] = await empsRes.json();
+      const reqs: SupportRequest[] = await reqsRes.json();
+      const employeesList = Array.isArray(emps) ? emps : [];
+      const requestsList = Array.isArray(reqs) ? reqs : [];
 
-    setEmployees(employeesList);
-    setRequests(requestsList);
-    setStats(computeStats(employeesList, requestsList));
+      setEmployees(employeesList);
+      setRequests(requestsList);
+      setStats(computeStats(employeesList, requestsList));
 
-    const flaggedEmps = employeesList.filter((e) => e.risk_level !== "green" || (e.progress || 0) < 50);
-    const tasksResults = await Promise.all(
-      flaggedEmps.map((emp) =>
-        fetch("/api/tasks?employeeId=" + emp.id).then((r) => r.json()).catch(() => [])
-      )
-    );
-    const assessments = flaggedEmps.map((emp, i) => {
-      const empTasks: EmployeeTask[] = Array.isArray(tasksResults[i]) ? tasksResults[i] : [];
-      const unresolved = requestsList.filter((r) => r.employee_id === emp.id && r.status !== "Resolved").length;
-      return calculateRiskAssessment(emp, empTasks, unresolved);
-    });
-    setRiskAssessments(assessments);
-    setLoading(false);
+      const flaggedEmps = employeesList.filter((e) => e.risk_level !== "green" || (e.progress || 0) < 50);
+      const tasksResults = await Promise.all(
+        flaggedEmps.map((emp) =>
+          fetch("/api/tasks?employeeId=" + emp.id).then((r) => r.json()).catch(() => [])
+        )
+      );
+      const assessments = flaggedEmps.map((emp, i) => {
+        const empTasks: EmployeeTask[] = Array.isArray(tasksResults[i]) ? tasksResults[i] : [];
+        const unresolved = requestsList.filter((r) => r.employee_id === emp.id && r.status !== "Resolved").length;
+        return calculateRiskAssessment(emp, empTasks, unresolved);
+      });
+      setRiskAssessments(assessments);
+    } catch {
+      setError("Could not load dashboard data. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const loadEmployeeData = async () => {
@@ -111,8 +119,11 @@ export default function DashboardPage() {
       if (data && data.employee) {
         setDash(data);
       }
-    } catch {}
-    setLoading(false);
+    } catch {
+      setError("Could not load your dashboard data. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -135,13 +146,25 @@ export default function DashboardPage() {
 
   // Employee portal widgets
   const handleCompleteTask = async (taskId: string) => {
-    if (!dash) return;
-    await fetch("/api/tasks", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ employee_id: dash.employee.id, task_id: taskId }),
-    });
-    loadEmployeeData();
+    if (!dash || completingId) return;
+    setCompletingId(taskId);
+    try {
+      const res = await fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ employee_id: dash.employee.id, task_id: taskId }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setError(data?.error || "Failed to complete task. Please try again.");
+        return;
+      }
+      await loadEmployeeData();
+    } catch {
+      setError("Connection error. Please try again.");
+    } finally {
+      setCompletingId(null);
+    }
   };
 
   const employeeRisk = dash ? calculateRiskAssessment(dash.employee, dash.tasks) : null;
@@ -156,6 +179,13 @@ export default function DashboardPage() {
           {isAdmin ? "Overview of employee onboarding status" : "Your workspace at a glance"}
         </p>
       </div>
+
+      {error && (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <span>{error}</span>
+          <Button size="sm" variant="outline" onClick={() => { setError(""); if (isAdmin) loadAdminData(); else loadEmployeeData(); }}>Retry</Button>
+        </div>
+      )}
 
       {!isAdmin && !dash && (
         <EmptyState
@@ -278,7 +308,7 @@ export default function DashboardPage() {
                             {t.mandatory && <span className="ml-2 text-amber-600">Required</span>}
                           </p>
                         </div>
-                        <Button size="sm" variant="outline" onClick={() => handleCompleteTask(t.id)}><CheckCircle2 className="mr-1 h-4 w-4" />Complete</Button>
+                        <Button size="sm" variant="outline" loading={completingId === t.id} disabled={!!completingId} onClick={() => handleCompleteTask(t.id)}><CheckCircle2 className="mr-1 h-4 w-4" />Complete</Button>
                       </div>
                     ))}
                   </div>
