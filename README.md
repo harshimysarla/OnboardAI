@@ -72,7 +72,7 @@ flowchart TB
     end
 
     subgraph External["External AI"]
-        GEM[Google Gemini<br/>gemini-1.5-flash + text-embedding-004]
+        GEM[Google Gemini<br/>gemini-2.0-flash + gemini-embedding-001]
     end
 
     UI --> API
@@ -134,11 +134,11 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    Q[Employee question] --> EMB[Embed query<br/>text-embedding-004]
+    Q[Employee question] --> EMB[Embed query<br/>gemini-embedding-001]
     EMB --> VS[Cosine similarity over<br/>company's PolicyChunks]
     VS --> CTX[Top-K policy chunks +<br/>employee context]
     CTX --> PROMPT[System prompt<br/>answer ONLY from context]
-    PROMPT --> GEM[Gemini 1.5 Flash]
+    PROMPT --> GEM[Gemini 2.0 Flash]
     GEM --> R[Cited answer<br/>or 'contact HR' fallback]
     R --> AIC[Intent detection:<br/>request creation · task help]
 ```
@@ -174,8 +174,8 @@ sequenceDiagram
 | Styling | Tailwind CSS v4 + Lucide icons + Recharts |
 | Database | MongoDB (Mongoose 9) — 30+ collections |
 | Auth | Custom JWT (jose, HS256) — httpOnly cookies, refresh rotation, bcryptjs |
-| AI Chat | Google Gemini 1.5 Flash |
-| Embeddings | Google text-embedding-004 (RAG vector search) |
+| AI Chat | Google Gemini 2.0 Flash |
+| Embeddings | Google gemini-embedding-001 (RAG vector search) |
 | File Storage | Cloudinary (raw resource type, tenant-prefixed paths) |
 | Validation | Zod v4 |
 | Testing | Vitest (89 tests: validation, access codes, vault upload, risk engine, RAG) |
@@ -209,6 +209,7 @@ cp .env.example .env.local
 | `CLOUDINARY_API_SECRET` | optional | Cloudinary API secret |
 | `NEXT_PUBLIC_ALLOW_REGISTRATION` | optional | `"true"` to enable self-signup |
 | `NEXT_PUBLIC_APP_NAME` | optional | App display name (default `OnboardAI`) |
+| `NEXT_PUBLIC_APP_URL` | optional | Canonical app URL (default `http://localhost:3000`) |
 
 ### 2. Run
 
