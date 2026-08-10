@@ -42,12 +42,16 @@ export async function createSupportRequest(params: {
     status: "Open",
   });
 
-  await ActivityLog.create({
-    company_id: params.company_id,
-    employee_id: params.employee_id || undefined,
-    action: "Request created",
-    details: `${params.type} request (${params.category})`,
-  });
+  try {
+    await ActivityLog.create({
+      company_id: params.company_id,
+      employee_id: params.employee_id || undefined,
+      action: "Request created",
+      details: `${params.type} request (${params.category})`,
+    });
+  } catch (logError) {
+    console.error("Failed to record activity log:", logError);
+  }
 
   return serializeDoc(request.toObject());
 }
@@ -59,16 +63,27 @@ export async function updateRequestStatus(requestId: string, status: string) {
 
   if (user.role === "employee") throw new Error("Only HR can update request status");
 
-  const result = await SupportRequest.updateOne(
+  const existing = await SupportRequest.findOne({
+    _id: requestId,
+    company_id: user.company_id,
+  })
+    .select("employee_id type category")
+    .lean();
+  if (!existing) throw new Error("Request not found");
+
+  await SupportRequest.updateOne(
     { _id: requestId, company_id: user.company_id },
     { status }
   );
-  if (result.matchedCount === 0) throw new Error("Request not found");
 
-  await ActivityLog.create({
-    company_id: user.company_id,
-    employee_id: undefined,
-    action: "Request status updated",
-    details: `Request ${requestId} marked as ${status}`,
-  });
+  try {
+    await ActivityLog.create({
+      company_id: user.company_id,
+      employee_id: (existing.employee_id as string | undefined) || undefined,
+      action: "Request status updated",
+      details: `Request "${existing.type}" (${existing.category}) marked as ${status}`,
+    });
+  } catch (logError) {
+    console.error("Failed to record activity log:", logError);
+  }
 }
