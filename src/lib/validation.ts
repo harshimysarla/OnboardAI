@@ -67,14 +67,14 @@ export const chatSchema = z.object({
 
 // ─── Employees ──────────────────────────────────────────────────────
 export const createEmployeeSchema = z.object({
-  full_name: nonEmptyString,
+  full_name: z.string().trim().min(1, "Full name is required").max(120, "Full name must be 120 characters or fewer"),
   email: emailSchema,
-  job_title: z.string().optional(),
-  department: z.string().optional(),
+  job_title: z.string().trim().max(120, "Job title must be 120 characters or fewer").optional(),
+  department: z.string().trim().max(100, "Department must be 100 characters or fewer").optional(),
   department_id: z.string().optional(),
   company_id: z.string().optional(),
-  manager: z.string().optional(),
-  joining_date: nonEmptyString,
+  manager: z.string().trim().max(120, "Manager must be 120 characters or fewer").optional(),
+  joining_date: dateStringSchema,
 });
 
 // ─── Support Requests ───────────────────────────────────────────────

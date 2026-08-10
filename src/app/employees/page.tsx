@@ -93,7 +93,10 @@ export default function EmployeesPage() {
     });
     const created = await res.json().catch(() => null);
     if (!res.ok || !created) {
-      setAddError(typeof created?.error === "string" ? created.error : "Failed to create employee. Please try again.");
+      const details = Array.isArray(created?.details)
+        ? created.details.map((d: { message?: string }) => d.message || "Invalid input").join(". ")
+        : "";
+      setAddError(details || (typeof created?.error === "string" ? created.error : "Failed to create employee. Please try again."));
       return;
     }
     setEmployees(prev => [...prev, created]);
