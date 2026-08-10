@@ -3,7 +3,11 @@ import { cn } from "@/lib/utils";
 interface TProps { children: React.ReactNode; className?: string; }
 
 export function Table({ children, className }: TProps) {
-  return <table className={cn("min-w-full divide-y divide-gray-200", className)}>{children}</table>;
+  return (
+    <div className="overflow-x-auto">
+      <table className={cn("min-w-full divide-y divide-gray-200", className)}>{children}</table>
+    </div>
+  );
 }
 
 export function THead({ children, className }: TProps) {

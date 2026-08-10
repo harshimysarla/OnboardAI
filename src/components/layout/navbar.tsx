@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, CheckCheck, User } from "lucide-react";
+import { Bell, CheckCheck, Menu, User } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 
 interface AppNotification {
@@ -13,7 +13,7 @@ interface AppNotification {
   created_at: string;
 }
 
-export function Navbar({ user }: { user: { name: string; role: string } }) {
+export function Navbar({ user, onMenuClick }: { user: { name: string; role: string }; onMenuClick?: () => void }) {
   const router = useRouter();
   const [items, setItems] = useState<AppNotification[]>([]);
   const [unread, setUnread] = useState(0);
@@ -53,7 +53,16 @@ export function Navbar({ user }: { user: { name: string; role: string } }) {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-white px-6 shadow-sm">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-white px-4 shadow-sm sm:px-6">
+      {onMenuClick && (
+        <button
+          onClick={onMenuClick}
+          className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 lg:hidden"
+          aria-label="Open navigation menu"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+      )}
       <div className="flex-1" />
       <div className="relative" ref={panelRef}>
         <button
@@ -69,7 +78,7 @@ export function Navbar({ user }: { user: { name: string; role: string } }) {
           )}
         </button>
         {open && (
-          <div className="absolute right-0 top-12 w-96 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg">
+          <div className="absolute right-0 top-12 w-[calc(100vw-2rem)] max-w-96 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg">
             <div className="flex items-center justify-between border-b px-4 py-3">
               <p className="text-sm font-semibold text-gray-900">Notifications</p>
               {unread > 0 && (
