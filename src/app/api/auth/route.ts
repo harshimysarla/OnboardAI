@@ -53,8 +53,12 @@ export async function POST(request: NextRequest) {
 
     const response = NextResponse.json({ success: true });
     return response;
-  } catch {
-    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+  } catch (error: unknown) {
+    if (error instanceof SyntaxError) {
+      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    }
+    console.error("Login error:", error);
+    return NextResponse.json({ error: "Login failed. Please try again." }, { status: 500 });
   }
 }
 

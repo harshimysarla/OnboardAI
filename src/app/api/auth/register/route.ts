@@ -17,6 +17,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(result, { status: 201 });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Registration failed";
-    return NextResponse.json({ error: msg }, { status: 400 });
+    if (msg === "Registration is disabled") {
+      return NextResponse.json({ error: msg }, { status: 403 });
+    }
+    if (msg === "An account with this email already exists") {
+      return NextResponse.json({ error: msg }, { status: 409 });
+    }
+    console.error("Registration error:", error);
+    return NextResponse.json({ error: "Registration failed. Please try again." }, { status: 500 });
   }
 }
