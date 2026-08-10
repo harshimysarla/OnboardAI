@@ -111,6 +111,7 @@ const EmployeeSchema = new Schema(
   { timestamps: { createdAt: "created_at", updatedAt: "updated_at" }, versionKey: false }
 );
 EmployeeSchema.index({ company_id: 1, email: 1 }, { unique: true });
+EmployeeSchema.index({ user_id: 1 });
 
 // ─── Onboarding Template + embedded tasks ───────────────────────────
 const OnboardingTaskSchema = new Schema(
@@ -242,7 +243,7 @@ ActivityLogSchema.index({ company_id: 1, created_at: -1 });
 const SessionSchema = new Schema(
   {
     user_id: ref("User", true),
-    refresh_token_hash: { type: String, required: true },
+    refresh_token_hash: { type: String, required: true, unique: true },
     expires_at: { type: Date, required: true },
     user_agent: { type: String, default: "" },
   },
