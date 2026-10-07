@@ -5,8 +5,10 @@ import { connectDB } from "@/lib/db";
 import { User, Company, Employee, Session, Invitation } from "@/lib/models";
 import { normalizeAccessCode, generateUniqueAccessCode } from "@/lib/access-code";
 import { rewardPolicySigned } from "./gamification";
+import { logAction } from "./logs";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
+
 
 export interface AuthenticatedUser {
   id: string;
@@ -230,6 +232,9 @@ export async function authenticateLogin(companyCode: string, email: string, pass
   if (!valid) return { error: "Invalid email or password" };
 
   await User.updateOne({ _id: user._id }, { last_login_at: new Date() }).catch(() => {});
+  
+  const employee = await Employee.findOne({ user_id: user._id }).select("_id").lean();
+  await logAction(company._id.toString(), employee ? employee._id.toString() : null, "login", `User ${user.email} logged in`);
 
   return {
     user: {
@@ -333,6 +338,12 @@ export async function changePassword(userId: string, newPassword: string) {
     { user_id: userId, status: "pending" },
     { status: "accepted" }
   ).catch(() => {});
+  
+  const user = await User.findById(userId).select("company_id email").lean();
+  if (user) {
+    const employee = await Employee.findOne({ user_id: userId }).select("_id").lean();
+    await logAction(user.company_id.toString(), employee ? employee._id.toString() : null, "password_change", `User ${user.email} changed password`);
+  }
 }
 
 export async function updateProfile(

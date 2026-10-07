@@ -3,6 +3,7 @@ import { Employee, Department, OnboardingTemplate, EmployeeTask, ActivityLog, Us
 import { requireAuth } from "./auth";
 import { serializeDoc, serializeMany, toId } from "@/lib/serialize";
 import { hashPassword } from "./auth";
+import { logAction } from "./logs";
 import { Types } from "mongoose";
 import crypto from "crypto";
 
@@ -274,6 +275,40 @@ export async function listInvitations(companyId: string) {
     ...serializeDoc(doc as unknown as Record<string, unknown>),
     invited_by_name: (doc.invited_by as unknown as Record<string, string> | undefined)?.full_name || "",
   }));
+}
+
+export async function resendInvitation(invitationId: string, companyId: string) {
+  const conn = await connectDB();
+  if (!conn) throw new Error("Database not configured");
+
+  const invitation = await Invitation.findOne({ _id: invitationId, company_id: companyId });
+  if (!invitation) throw new Error("Invitation not found");
+
+  if (invitation.status === "completed") {
+    throw new Error("Cannot resend completed invitation");
+  }
+
+  const user = await User.findById(invitation.user_id);
+  if (!user) throw new Error("User not found");
+
+  const tempPassword = cryptoRandomPassword();
+  const passwordHash = await hashPassword(tempPassword);
+
+  await User.updateOne(
+    { _id: user._id },
+    { password_hash: passwordHash, must_change_password: true }
+  );
+
+  // Set the invitation back to pending to re-trigger UI flows if necessary
+  invitation.status = "pending";
+  // Reset timestamps or resend logic can go here (e.g. firing off SMTP)
+  await invitation.save();
+
+  return {
+    temporary_password: tempPassword,
+    access_code: invitation.access_code,
+    email: invitation.email,
+  };
 }
 
 function cryptoRandomPassword(): string {

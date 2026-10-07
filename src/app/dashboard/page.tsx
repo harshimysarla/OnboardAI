@@ -14,7 +14,7 @@ import { getRiskColor, getRiskDot, getStatusColor, formatDate, isStaffRole } fro
 import { calculateRiskAssessment } from "@/lib/risk-engine";
 import { Employee, SupportRequest, EmployeeTask, RiskAssessment } from "@/types";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, PieLabelRenderProps } from "recharts";
-import { Users, TrendingUp, Clock, AlertTriangle, Activity, HelpCircle, Lightbulb, LayoutDashboard, Calendar, Target, Briefcase, ClipboardList, FileText, Zap, CheckCircle2 } from "lucide-react";
+import { Users, TrendingUp, Clock, AlertTriangle, Activity, HelpCircle, Lightbulb, LayoutDashboard, Calendar, Target, Briefcase, ClipboardList, FileText, Zap, CheckCircle2, Megaphone, GraduationCap, Clock3, PlaneTakeoff, CalendarDays } from "lucide-react";
 import { useUser } from "@/lib/use-user";
 import Link from "next/link";
 
@@ -48,6 +48,12 @@ interface DashData {
   activities: { id: string; action: string; details: string; created_at: string }[];
   requests: SupportRequest[];
   policies: { id: string; title: string; category: string; created_at: string }[];
+  attendance?: any[];
+  leaveBalance?: any;
+  trainings?: any[];
+  announcements?: any[];
+  events?: any[];
+  notifications?: any[];
 }
 
 function computeStats(employees: Employee[], requests: SupportRequest[], empId?: string): DashboardStats {
@@ -390,7 +396,7 @@ export default function DashboardPage() {
               <CardHeader>
                 <div className="flex items-center gap-2"><Target className="h-5 w-5 text-indigo-500" /><CardTitle>At a Glance</CardTitle></div>
               </CardHeader>
-              <CardContent className="grid grid-cols-2 gap-3">
+              <CardContent className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div className="rounded-lg bg-indigo-50 p-3 text-center">
                   <p className="text-2xl font-bold text-indigo-600">{dash.taskSummary.total}</p>
                   <p className="text-xs text-indigo-700">Total Tasks</p>
@@ -406,6 +412,110 @@ export default function DashboardPage() {
                 <div className="rounded-lg bg-blue-50 p-3 text-center">
                   <p className="text-2xl font-bold text-blue-600">{dash.requests.filter((r) => r.status !== "Resolved").length}</p>
                   <p className="text-xs text-blue-700">Open Requests</p>
+                </div>
+                <div className="rounded-lg bg-purple-50 p-3 text-center">
+                  <p className="text-2xl font-bold text-purple-600">{dash.attendance?.length || 0}</p>
+                  <p className="text-xs text-purple-700">Days Present (Mo)</p>
+                </div>
+                <div className="rounded-lg bg-rose-50 p-3 text-center">
+                  <p className="text-2xl font-bold text-rose-600">{dash.notifications?.filter(n => !n.read).length || 0}</p>
+                  <p className="text-xs text-rose-700">Unread Alerts</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* New Phase 1 Widgets */}
+          <div className="mt-6 grid gap-6 lg:grid-cols-4">
+            {/* Announcements */}
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <div className="flex items-center gap-2"><Megaphone className="h-5 w-5 text-indigo-500" /><CardTitle>Recent Announcements</CardTitle></div>
+              </CardHeader>
+              <CardContent className="p-0">
+                {!dash.announcements || dash.announcements.length === 0 ? (
+                  <p className="px-6 pb-4 text-sm text-gray-500">No recent announcements.</p>
+                ) : (
+                  <div className="divide-y">
+                    {dash.announcements.map((a) => (
+                      <div key={a.id} className="px-6 py-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <p className="font-medium text-gray-900 flex items-center gap-2">
+                              {a.title}
+                              {a.pinned && <Badge variant="default" className="text-[10px]">Pinned</Badge>}
+                            </p>
+                            <p className="mt-1 text-sm text-gray-600 line-clamp-2">{a.content}</p>
+                          </div>
+                          <span className="shrink-0 text-xs text-gray-400">{formatDate(a.published_at)}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Leave Balance */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2"><PlaneTakeoff className="h-5 w-5 text-indigo-500" /><CardTitle>Leave Balance</CardTitle></div>
+              </CardHeader>
+              <CardContent>
+                {dash.leaveBalance ? (
+                  <div className="space-y-4">
+                    <div>
+                      <div className="flex justify-between text-sm mb-1"><span className="text-gray-500">Annual</span><span className="font-medium">{dash.leaveBalance.annual_total - dash.leaveBalance.annual_used} days left</span></div>
+                      <Progress value={((dash.leaveBalance.annual_used) / (dash.leaveBalance.annual_total || 1)) * 100} className="h-2" />
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-sm mb-1"><span className="text-gray-500">Sick</span><span className="font-medium">{dash.leaveBalance.sick_total - dash.leaveBalance.sick_used} days left</span></div>
+                      <Progress value={((dash.leaveBalance.sick_used) / (dash.leaveBalance.sick_total || 1)) * 100} className="h-2 bg-gray-100 [&>div]:bg-amber-500" />
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-sm mb-1"><span className="text-gray-500">Casual</span><span className="font-medium">{dash.leaveBalance.casual_total - dash.leaveBalance.casual_used} days left</span></div>
+                      <Progress value={((dash.leaveBalance.casual_used) / (dash.leaveBalance.casual_total || 1)) * 100} className="h-2 bg-gray-100 [&>div]:bg-blue-500" />
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">Leave balances not configured.</p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Training & Events */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2"><CalendarDays className="h-5 w-5 text-indigo-500" /><CardTitle>Upcoming Events</CardTitle></div>
+              </CardHeader>
+              <CardContent className="p-0">
+                {!dash.events || dash.events.length === 0 ? (
+                  <p className="px-6 pb-4 text-sm text-gray-500">No upcoming events.</p>
+                ) : (
+                  <div className="divide-y">
+                    {dash.events.map((ev) => (
+                      <div key={ev.id} className="px-6 py-3">
+                        <p className="text-sm font-medium text-gray-900">{ev.title}</p>
+                        <p className="text-xs text-gray-500">{formatDate(ev.date)} {ev.time && `· ${ev.time}`}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                <div className="mt-2 border-t pt-2">
+                  <div className="px-6 py-2 flex items-center gap-2"><GraduationCap className="h-4 w-4 text-indigo-500" /><h4 className="text-sm font-semibold text-gray-900">Training</h4></div>
+                  {!dash.trainings || dash.trainings.length === 0 ? (
+                    <p className="px-6 pb-4 text-xs text-gray-500">No training assigned.</p>
+                  ) : (
+                    <div className="px-6 pb-4 space-y-3">
+                      {dash.trainings.slice(0, 2).map((tr) => (
+                         <div key={tr.id}>
+                           <div className="flex justify-between text-xs mb-1"><span className="truncate pr-2 font-medium">{tr.course_id?.title || "Course"}</span><span>{tr.progress}%</span></div>
+                           <Progress value={tr.progress} className="h-1.5" />
+                         </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

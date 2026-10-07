@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, Users, ClipboardList, HelpCircle, BarChart3, Settings, Laptop, LogOut, Building2, FileText, Clock, CalendarDays, Megaphone, GraduationCap, Package, FolderOpen, BookOpen, CalendarCheck, Trophy, Bell } from 'lucide-react';
+import { LayoutDashboard, Users, ClipboardList, HelpCircle, BarChart3, Settings, Laptop, LogOut, Building2, FileText, Clock, CalendarDays, Megaphone, GraduationCap, Package, FolderOpen, BookOpen, CalendarCheck, Trophy, Bell, ShieldAlert } from 'lucide-react';
 
 interface SidebarProps {
   role: string;
@@ -16,6 +16,7 @@ const navItems = [
   { href: '/onboarding', label: 'Onboarding', icon: ClipboardList, roles: ['employee', 'manager'] },
   { href: '/attendance', label: 'Attendance', icon: Clock, roles: ['admin', 'hr', 'employee', 'manager'] },
   { href: '/leaves', label: 'Leave', icon: CalendarDays, roles: ['admin', 'hr', 'employee', 'manager'] },
+  { href: '/performance', label: 'Performance', icon: Trophy, roles: ['admin', 'hr', 'employee', 'manager'] },
   { href: '/announcements', label: 'Announcements', icon: Megaphone, roles: ['admin', 'hr', 'employee', 'manager'] },
   { href: '/training', label: 'Training', icon: GraduationCap, roles: ['admin', 'hr', 'employee', 'manager'] },
   { href: '/assets', label: 'Assets', icon: Package, roles: ['admin', 'hr', 'employee', 'manager'] },
@@ -28,6 +29,7 @@ const navItems = [
   { href: '/analytics', label: 'Analytics', icon: BarChart3, roles: ['admin', 'hr'] },
   { href: '/assistant', label: 'Ask AI', icon: Laptop, roles: ['employee', 'manager'] },
   { href: '/policies', label: 'Policies', icon: FileText, roles: ['admin', 'hr'] },
+  { href: '/logs', label: 'Audit Logs', icon: ShieldAlert, roles: ['admin', 'hr'] },
   { href: '/company', label: 'Company', icon: Building2, roles: ['admin'] },
   { href: '/settings', label: 'Settings', icon: Settings, roles: ['admin', 'hr', 'manager', 'employee'] },
 ];

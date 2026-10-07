@@ -1,5 +1,5 @@
 import { connectDB } from "@/lib/db";
-import { Employee, Department, Company, EmployeeTask, ActivityLog, SupportRequest, Policy } from "@/lib/models";
+import { Employee, Department, Company, EmployeeTask, ActivityLog, SupportRequest, Policy, AttendanceRecord, LeaveBalance, TrainingAssignment, Announcement, CompanyEvent, Notification } from "@/lib/models";
 import { requireAuth } from "@/lib/services/auth";
 import { serializeDoc, serializeMany } from "@/lib/serialize";
 
@@ -19,32 +19,38 @@ export async function getEmployeeDashboard() {
   ]);
   if (!employee) return null;
 
-  const [department, tasks, activities, requests, policies] = await Promise.all([
-    employee.department_id ? Department.findById(employee.department_id).lean() : null,
-    EmployeeTask.find({
-      employee_id: user.employee_id,
-      company_id: user.company_id,
-    }).sort({ sort_order: 1, created_at: 1 }).lean(),
-    ActivityLog.find({ company_id: user.company_id, employee_id: user.employee_id })
-      .sort({ created_at: -1 })
-      .limit(8)
-      .lean(),
-    SupportRequest.find({ company_id: user.company_id, employee_id: user.employee_id })
-      .sort({ created_at: -1 })
-      .limit(4)
-      .lean(),
-    Policy.find({ company_id: user.company_id })
-      .sort({ created_at: -1 })
-      .limit(3)
-      .select("title category created_at")
-      .lean(),
-  ]);
-
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
+  const thisMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
 
+  const [
+    department, tasks, activities, requests, policies,
+    attendance, leaveBalance, trainings, announcements, events, notifications
+  ] = await Promise.all([
+    employee.department_id ? Department.findById(employee.department_id).lean() : null,
+    EmployeeTask.find({ employee_id: user.employee_id, company_id: user.company_id })
+      .sort({ sort_order: 1, created_at: 1 }).lean(),
+    ActivityLog.find({ company_id: user.company_id, employee_id: user.employee_id })
+      .sort({ created_at: -1 }).limit(8).lean(),
+    SupportRequest.find({ company_id: user.company_id, employee_id: user.employee_id })
+      .sort({ created_at: -1 }).limit(4).lean(),
+    Policy.find({ company_id: user.company_id })
+      .sort({ created_at: -1 }).limit(3).select("title category created_at").lean(),
+    AttendanceRecord.find({ company_id: user.company_id, employee_id: user.employee_id, date: { $gte: thisMonthStart } })
+      .sort({ date: -1 }).lean(),
+    LeaveBalance.findOne({ company_id: user.company_id, employee_id: user.employee_id }).lean(),
+    TrainingAssignment.find({ company_id: user.company_id, employee_id: user.employee_id })
+      .populate("course_id", "title category")
+      .sort({ created_at: -1 }).lean(),
+    Announcement.find({ company_id: user.company_id, published_at: { $lte: new Date() } })
+      .sort({ pinned: -1, published_at: -1 }).limit(3).lean(),
+    CompanyEvent.find({ company_id: user.company_id, date: { $gte: today } })
+      .sort({ date: 1 }).limit(3).lean(),
+    Notification.find({ company_id: user.company_id, user_id: user.id })
+      .sort({ created_at: -1 }).limit(5).lean(),
+  ]);
   const serializedTasks = (tasks || []).map((t) =>
     serializeDoc(t.toObject())
   ) as {
@@ -88,5 +94,11 @@ export async function getEmployeeDashboard() {
     activities: serializeMany(activities || []),
     requests: serializeMany(requests || []),
     policies: serializeMany(policies || []),
+    attendance: serializeMany(attendance || []),
+    leaveBalance: leaveBalance ? serializeDoc(leaveBalance as Record<string, unknown>) : null,
+    trainings: serializeMany(trainings || []),
+    announcements: serializeMany(announcements || []),
+    events: serializeMany(events || []),
+    notifications: serializeMany(notifications || []),
   };
 }

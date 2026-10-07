@@ -4,6 +4,7 @@ import { serializeDoc } from "@/lib/serialize";
 import { isStaffRole } from "@/lib/utils";
 import { Types } from "mongoose";
 import type { AuthenticatedUser } from "@/lib/services/auth";
+import { logAction } from "./logs";
 
 type AssetUser = Pick<AuthenticatedUser, "id" | "company_id" | "role" | "employee_id">;
 
@@ -84,6 +85,8 @@ export async function updateAsset(
       doc.assigned_to = new Types.ObjectId(input.assigned_to);
       doc.assigned_at = new Date();
       doc.status = "assigned" as never;
+      
+      await logAction(user.company_id, input.assigned_to, "asset_assignment", `Asset ${doc.name} assigned to employee`);
     } else {
       doc.assigned_to = undefined;
       doc.assigned_at = undefined;

@@ -4,6 +4,8 @@ import { serializeDoc } from "@/lib/serialize";
 import type { AuthenticatedUser } from "@/lib/services/auth";
 import { computeFileHash, uploadToCloudinary } from "@/lib/services/cloudinary";
 import { prepareFileUpload } from "@/lib/vault-upload";
+import { Employee } from "@/lib/models";
+import { logAction } from "./logs";
 
 type VaultUser = Pick<AuthenticatedUser, "id" | "company_id" | "role" | "full_name">;
 
@@ -175,6 +177,10 @@ export async function createVaultDocumentFromFile(
     current_version: 1,
     download_count: 0,
   });
+
+  const employee = await Employee.findOne({ user_id: user.id }).select("_id").lean();
+  await logAction(user.company_id, employee ? employee._id.toString() : null, "document_upload", `Uploaded document: ${input.title}`);
+
   return { document: withCurrentVersion(doc.toObject()) };
 }
 

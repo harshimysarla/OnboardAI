@@ -497,6 +497,40 @@ const CompanyEventSchema = new Schema(
 );
 CompanyEventSchema.index({ company_id: 1, date: 1 });
 
+// ─── Performance & Goals ────────────────────────────────────────────
+export const GoalStatus = ["not_started", "in_progress", "completed", "cancelled"] as const;
+
+const PerformanceGoalSchema = new Schema(
+  {
+    company_id: ref("Company", true),
+    employee_id: ref("Employee", true),
+    title: { type: String, required: true },
+    description: { type: String, default: "" },
+    status: { type: String, enum: GoalStatus, default: "not_started" },
+    progress: { type: Number, default: 0 },
+    due_date: { type: Date },
+    assigned_by: ref("User"),
+    assigned_by_name: { type: String, default: "" },
+  },
+  { timestamps: { createdAt: "created_at", updatedAt: "updated_at" }, versionKey: false }
+);
+PerformanceGoalSchema.index({ company_id: 1, employee_id: 1, created_at: -1 });
+
+const PerformanceReviewSchema = new Schema(
+  {
+    company_id: ref("Company", true),
+    employee_id: ref("Employee", true),
+    reviewer_id: ref("User", true),
+    reviewer_name: { type: String, default: "" },
+    period: { type: String, required: true }, // e.g. "Q3 2026"
+    rating: { type: Number, default: 0 }, // e.g. 1-5
+    feedback: { type: String, default: "" },
+    status: { type: String, enum: ["draft", "published"], default: "draft" },
+  },
+  { timestamps: { createdAt: "created_at", updatedAt: "updated_at" }, versionKey: false }
+);
+PerformanceReviewSchema.index({ company_id: 1, employee_id: 1, created_at: -1 });
+
 export const Company =
   models.Company || model("Company", CompanySchema);
 export const User = models.User || model("User", UserSchema);
@@ -542,3 +576,7 @@ export const VaultDocument =
   models.VaultDocument || model("VaultDocument", VaultDocumentSchema);
 export const CompanyEvent =
   models.CompanyEvent || model("CompanyEvent", CompanyEventSchema);
+export const PerformanceGoal =
+  models.PerformanceGoal || model("PerformanceGoal", PerformanceGoalSchema);
+export const PerformanceReview =
+  models.PerformanceReview || model("PerformanceReview", PerformanceReviewSchema);

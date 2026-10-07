@@ -82,6 +82,27 @@ export default function EmployeesPage() {
     } catch {}
   };
 
+  const [resendingId, setResendingId] = useState<string | null>(null);
+
+  const handleResend = async (id: string, email: string) => {
+    setResendingId(id);
+    try {
+      const res = await fetch(`/api/invitations/${id}/resend`, { method: "POST" });
+      const data = await res.json();
+      if (res.ok && data.temporary_password) {
+        setInviteModal({ email: email, tempPassword: data.temporary_password });
+        // Refresh the list
+        handleOpenHistory();
+      } else {
+        alert(data.error || "Failed to resend invitation");
+      }
+    } catch {
+      alert("Failed to resend invitation");
+    } finally {
+      setResendingId(null);
+    }
+  };
+
   const depts = [...new Set([...departments, ...employees.map(e => e.department).filter(Boolean)])];
   const filtered = employees.filter(e => {
     const matchSearch = !search || e.full_name.toLowerCase().includes(search.toLowerCase()) || e.email.toLowerCase().includes(search.toLowerCase());
@@ -178,7 +199,8 @@ export default function EmployeesPage() {
                     <th className="py-2 pr-4">Email</th>
                     <th className="py-2 pr-4">Invited by</th>
                     <th className="py-2 pr-4">Status</th>
-                    <th className="py-2">Date</th>
+                    <th className="py-2 pr-4">Date</th>
+                    <th className="py-2 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -187,7 +209,20 @@ export default function EmployeesPage() {
                       <td className="py-2 pr-4 text-gray-900">{inv.email}</td>
                       <td className="py-2 pr-4 text-gray-600">{inv.invited_by_name || "-"}</td>
                       <td className="py-2 pr-4"><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[inv.status] || ""}`}>{inv.status}</span></td>
-                      <td className="py-2 text-gray-500">{formatDate(inv.created_at)}</td>
+                      <td className="py-2 pr-4 text-gray-500">{formatDate(inv.created_at)}</td>
+                      <td className="py-2 text-right text-gray-500">
+                        {inv.status !== "completed" && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleResend(inv.id, inv.email)}
+                            loading={resendingId === inv.id}
+                            disabled={!!resendingId}
+                          >
+                            Resend
+                          </Button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
