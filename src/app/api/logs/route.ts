@@ -15,9 +15,10 @@ export async function GET(request: Request) {
 
     const data = await getLogs(limit);
     return NextResponse.json(data);
-  } catch (error: any) {
-    if (error.message === "Insufficient permissions") return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-    if (error.message === "Authentication required") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Unknown error";
+    if (msg === "Insufficient permissions") return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    if (msg === "Authentication required") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

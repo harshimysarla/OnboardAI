@@ -7,7 +7,6 @@ import { LoadingSpinner } from "@/components/ui/loading";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { ScrollText, ShieldAlert } from "lucide-react";
-import { useUser } from "@/lib/use-user";
 import { formatDate } from "@/lib/utils";
 
 interface ActivityLog {
@@ -24,7 +23,6 @@ interface ActivityLog {
 }
 
 export default function LogsPage() {
-  const { user } = useUser();
   const [loading, setLoading] = useState(true);
   const [logs, setLogs] = useState<ActivityLog[]>([]);
 

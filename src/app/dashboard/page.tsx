@@ -14,7 +14,7 @@ import { getRiskColor, getRiskDot, getStatusColor, formatDate, isStaffRole } fro
 import { calculateRiskAssessment } from "@/lib/risk-engine";
 import { Employee, SupportRequest, EmployeeTask, RiskAssessment } from "@/types";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, PieLabelRenderProps } from "recharts";
-import { Users, TrendingUp, Clock, AlertTriangle, Activity, HelpCircle, Lightbulb, LayoutDashboard, Calendar, Target, Briefcase, ClipboardList, FileText, Zap, CheckCircle2, Megaphone, GraduationCap, Clock3, PlaneTakeoff, CalendarDays } from "lucide-react";
+import { Users, TrendingUp, Clock, AlertTriangle, Activity, HelpCircle, Lightbulb, LayoutDashboard, Calendar, Target, Briefcase, ClipboardList, FileText, Zap, CheckCircle2, Megaphone, GraduationCap, PlaneTakeoff, CalendarDays } from "lucide-react";
 import { useUser } from "@/lib/use-user";
 import Link from "next/link";
 
@@ -48,12 +48,14 @@ interface DashData {
   activities: { id: string; action: string; details: string; created_at: string }[];
   requests: SupportRequest[];
   policies: { id: string; title: string; category: string; created_at: string }[];
+  /* eslint-disable @typescript-eslint/no-explicit-any */
   attendance?: any[];
   leaveBalance?: any;
   trainings?: any[];
   announcements?: any[];
   events?: any[];
   notifications?: any[];
+  /* eslint-enable @typescript-eslint/no-explicit-any */
 }
 
 function computeStats(employees: Employee[], requests: SupportRequest[], empId?: string): DashboardStats {

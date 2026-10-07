@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { isDatabaseConfigured } from "@/lib/env";
-import { requireAuth } from "@/lib/services/auth";
 import { getPerformanceData, createGoal, updateGoalProgress, createReview } from "@/lib/services/performance";
 
 export async function GET(request: Request) {
@@ -12,8 +11,9 @@ export async function GET(request: Request) {
     
     const data = await getPerformanceData(employeeId);
     return NextResponse.json(data);
-  } catch (error: any) {
-    if (error.message === "Authentication required") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Unknown error";
+    if (msg === "Authentication required") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
@@ -27,20 +27,23 @@ export async function POST(request: Request) {
     
     let result;
     if (action === "create_goal") {
-      result = await createGoal(data);
+      /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+      result = await createGoal(data as any);
     } else if (action === "update_goal") {
       result = await updateGoalProgress(data.id, data.progress, data.status);
     } else if (action === "create_review") {
-      result = await createReview(data);
+      /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+      result = await createReview(data as any);
     } else {
       return NextResponse.json({ error: "Unknown action" }, { status: 400 });
     }
     
     return NextResponse.json(result);
-  } catch (error: any) {
-    if (error.message === "Unauthorized" || error.message === "Authentication required") {
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Unknown error";
+    if (msg === "Unauthorized" || msg === "Authentication required") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    return NextResponse.json({ error: error.message || "Internal error" }, { status: 500 });
+    return NextResponse.json({ error: msg || "Internal error" }, { status: 500 });
   }
 }

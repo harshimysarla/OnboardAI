@@ -1,7 +1,7 @@
 import { connectDB } from "@/lib/db";
-import { PerformanceGoal, PerformanceReview, Employee, User } from "@/lib/models";
+import { PerformanceGoal, PerformanceReview } from "@/lib/models";
 import { requireAuth } from "./auth";
-import { serializeDoc, serializeMany, toId } from "@/lib/serialize";
+import { serializeDoc, serializeMany } from "@/lib/serialize";
 
 export async function getPerformanceData(employeeId?: string) {
   const conn = await connectDB();

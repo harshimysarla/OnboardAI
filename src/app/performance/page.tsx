@@ -10,7 +10,7 @@ import { LoadingSpinner } from "@/components/ui/loading";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Target, Star, CheckCircle2, AlertTriangle, TrendingUp, Clock, FileText } from "lucide-react";
+import { Target, Star, TrendingUp, Clock, FileText } from "lucide-react";
 import { useUser } from "@/lib/use-user";
 import { formatDate, isStaffRole } from "@/lib/utils";
 
@@ -73,7 +73,9 @@ export default function PerformancePage() {
         .then((data) => setEmployees(Array.isArray(data) ? data : []))
         .catch(() => {});
     }
+    /* eslint-disable react-hooks/set-state-in-effect */
     loadData();
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [canManage, loadData]);
 
   const handleEmployeeChange = (empId: string) => {
@@ -113,7 +115,7 @@ export default function PerformancePage() {
     setBusy(false);
   };
 
-  const updateGoalProgress = async (id: string, currentProg: number, currentStat: string) => {
+  const updateGoalProgress = async (id: string, currentProg: number) => {
     const newProg = Math.min(100, currentProg + 25);
     const newStat = newProg >= 100 ? "completed" : "in_progress";
     
@@ -222,7 +224,7 @@ export default function PerformancePage() {
                       </div>
                       {(!canManage || selectedEmployee === "" || selectedEmployee === user?.employee_id) && goal.status !== "completed" && (
                         <div className="mt-4 flex justify-end">
-                          <Button size="sm" variant="outline" loading={busy} onClick={() => updateGoalProgress(goal.id, goal.progress, goal.status)}>
+                          <Button size="sm" variant="outline" loading={busy} onClick={() => updateGoalProgress(goal.id, goal.progress)}>
                             Update Progress (+25%)
                           </Button>
                         </div>
@@ -272,7 +274,7 @@ export default function PerformancePage() {
                           ))}
                         </div>
                       </div>
-                      <p className="mt-2 text-sm text-gray-700">"{review.feedback}"</p>
+                      <p className="mt-2 text-sm text-gray-700">&quot;{review.feedback}&quot;</p>
                       <p className="mt-3 text-xs text-gray-400">Reviewed by {review.reviewer_name} on {formatDate(review.created_at)}</p>
                     </div>
                   ))}

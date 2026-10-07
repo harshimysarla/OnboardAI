@@ -1,3 +1,4 @@
+/* eslint-disable-next-line @typescript-eslint/no-require-imports */
 const mongoose = require("mongoose");
 async function main() {
   await mongoose.connect(process.env.DBURI, { serverSelectionTimeoutMS: 20000, connectTimeoutMS: 20000 });

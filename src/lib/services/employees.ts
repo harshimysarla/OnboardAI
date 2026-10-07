@@ -3,7 +3,6 @@ import { Employee, Department, OnboardingTemplate, EmployeeTask, ActivityLog, Us
 import { requireAuth } from "./auth";
 import { serializeDoc, serializeMany, toId } from "@/lib/serialize";
 import { hashPassword } from "./auth";
-import { logAction } from "./logs";
 import { Types } from "mongoose";
 import crypto from "crypto";
 
